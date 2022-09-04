@@ -1,0 +1,24 @@
+Need to learn:
+-------------
+* ANMS 
+* subsampling methods for feature descriptor
+* computing homography given feature points
+* RANSAC steps 
+
+Highlights:
+----------
+* 40 X 40 centered patch in feature descriptor
+* blending techniques and third party code can be used
+* algo should work for any number of images
+* no/less number of matches then algo should ignore that from final panorama
+* if all images have no/less number of common features then error
+* Poisson blending to account for inconsistency during blending
+
+Phase 1 Parameter tuning:
+-----------------------
+* resizing image
+* N_best in N_best corners of ANMS
+* Gaussian blur parameters for feature descriptor
+* threshold for (best match distance)/(second best match distance)
+* threshold for categorzing feature correspondences as inliers in RANSAC
+* N_max number of iterations in RANSAC or thresholding percentage for number of inliers

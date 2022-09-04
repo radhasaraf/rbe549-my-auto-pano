@@ -1,0 +1,30 @@
+Understanding Project1 Statement and Related Questions
+
+Task: stich images
+Submission: 1 report and 1 code per person
+
+Questions
+------------------Common-----------------------------------
+* what do they mean by sets of images and image sequences? 
+- 2 data sets and any number of image sequences in it
+* are we gonna submit one report/code per group or per person?
+- yes
+* what should be submission file name?
+------------------Common-----------------------------------
+
+------------------Phase I-----------------------------------
+* what is the difference between extracting corners vs making them distributed across the image? 
+---- extracting corners will give lot of corners
+---- ANMS is evenly distributing and finding N_best local maxima corners
+
+* how is standardization achieving illumination invariance
+* subsampling functions need to implemented or can be used from online? 
+* are we gonna grayscale the image
+- yes
+* can we use cv homography functions
+------------------END-----------------------------------
+
+------------------Phase II-----------------------------------
+* should we create our own database generation files and will these be rerun as part of submission? 
+* even if we generate how to give this data to the model? 
+------------------END-----------------------------------

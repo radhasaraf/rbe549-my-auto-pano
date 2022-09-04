@@ -132,3 +132,6 @@ dmypy.json
 
 # vim
 *.swp
+
+# not adding data
+Data
