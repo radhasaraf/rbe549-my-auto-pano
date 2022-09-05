@@ -320,28 +320,17 @@
 % not capitalized unless they are the first or last word of the title.
 % Linebreaks \\ can be used within to get better formatting as desired.
 % Do not put math or special symbols in the title.
-\title{Bare Demo of IEEEtran.cls\\ for IEEE Conferences}
+\title{Project 1: My AutoPano}
 
 
 % author names and affiliations
 % use a multiple column layout for up to three different
 % affiliations
-\author{\IEEEauthorblockN{Michael Shell}
-\IEEEauthorblockA{School of Electrical and\\Computer Engineering\\
-Georgia Institute of Technology\\
-Atlanta, Georgia 30332--0250\\
-Email: http://www.michaelshell.org/contact.html}
+\author{\IEEEauthorblockN{Radha Saraf}
+\IEEEauthorblockA{Email: rrsaraf@wpi.edu}
 \and
-\IEEEauthorblockN{Homer Simpson}
-\IEEEauthorblockA{Twentieth Century Fox\\
-Springfield, USA\\
-Email: homer@thesimpsons.com}
-\and
-\IEEEauthorblockN{James Kirk\\ and Montgomery Scott}
-\IEEEauthorblockA{Starfleet Academy\\
-San Francisco, California 96678--2391\\
-Telephone: (800) 555--1212\\
-Fax: (888) 555--1212}}
+\IEEEauthorblockN{Sai Ramana Kiran Pinnama Raju}
+\IEEEauthorblockA{Email: spinnamaraju@wpi.edu}}
 
 % conference papers do not typically use \thanks and this command
 % is locked out in conference mode. If really needed, such as for
@@ -379,9 +368,9 @@ Fax: (888) 555--1212}}
 
 % As a general rule, do not put math, special symbols or citations
 % in the abstract
-\begin{abstract}
-The abstract goes here.
-\end{abstract}
+% \begin{abstract}
+% The abstract goes here.
+% \end{abstract}
 
 % no keywords
 
@@ -399,23 +388,16 @@ The abstract goes here.
 \IEEEpeerreviewmaketitle
 
 
+\section{Phase I: Classical Approach}
 
-\section{Introduction}
-% no \IEEEPARstart
-This demo file is intended to serve as a ``starter file''
-for IEEE conference papers produced under \LaTeX\ using
-IEEEtran.cls version 1.8b and later.
-% You must have at least 2 lines in the paragraph with the drop letter
-% (should never be an issue)
-I wish you the best of success.
+In this part of the project, we explore the classical methods to create a panoroma by stiching the image sequences. As part of data collection, we tried 2 different sequences to check the robustness of the approach
+\begin{itemize}
+  \item Indoor cluttered environments where it is feature rich
+  \item Outdoors where features are limited 
+\end{itemize}
 
-\hfill mds
- 
-\hfill August 26, 2015
-
-\subsection{Subsection Heading Here}
-Subsection text here.
-
+\subsection{Corner Detection}
+For corner detection, we used OpenCV's Harris corners detection functionality. Following parameters are for corner detection are found to be optimal, kernel size 
 
 \subsubsection{Subsubsection Heading Here}
 Subsubsection text here.
