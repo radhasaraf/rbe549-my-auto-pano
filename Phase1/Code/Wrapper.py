@@ -13,6 +13,7 @@ Worcester Polytechnic Institute
 """
 
 # Code starts here:
+from multiprocessing.sharedctypes import Value
 import numpy as np
 import cv2
 
@@ -25,11 +26,58 @@ from matplotlib import pyplot as plt
 from skimage.feature import corner_peaks,peak_local_max
 from typing import List
 import math
+import random
 
 
 # Helper funcs
 def cvt_for_plt(img):
     return cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+
+def normalize(image_mat):
+    return cv2.normalize(image_mat,dst=None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8UC1)
+
+def write_image_output(suffix,file_name,extension,image,path=None,display=False):
+    ## TODO need to modify to write to current path
+    output_file_path = ""
+    if path is not None:
+        output_file_path += path
+        output_file_path += "output_"
+    output_file_path += suffix + file_name + extension
+    print("Writing "+suffix+" to file:",output_file_path)
+    if display:
+        cv2.imshow(suffix,image)
+        cv2.waitKey(0)
+    else:
+        cv2.imwrite(output_file_path,image)
+
+def calc_and_print_stats(suffix, image):
+    arr = image.flatten()
+    maxi = max(arr)
+    mini = min(arr)
+    avg = np.average(arr)
+    stddev = np.std(arr)
+    print(f"{suffix} mean:{avg}")
+    print(f"{suffix} max:{maxi}")
+    print(f"{suffix} min:{mini}")
+    print(f"{suffix} dev:{stddev}")
+    return [max,min,avg,stddev]
+
+def standardize_image(image):
+    mean = np.mean(image,keepdims=True)
+    std = np.sqrt((image - mean)**2).mean(keepdims=True)
+    return (image - mean)/std
+
+def draw_markers(suffix,image,coords,color,display=False,file_name=None,output_file_extension=".png",path=None):
+    image_dup = np.copy(image)
+    for coord in coords:
+        cv2.drawMarker(image_dup,[coord[1],coord[0]],color)
+    if display:
+        cv2.imshow(suffix,image_dup)
+        cv2.waitKey(0)
+    if not display:
+        if file_name is None or path is None:
+            raise ValueError("file_name or path is None when saving the image")
+        write_image_output(suffix,file_name,output_file_extension,image_dup,path)
 
 def make_subplots(row_length,images):
     print(len(images))
@@ -85,51 +133,56 @@ class CoOrds:
     def __repr__(self) -> str:
         return "(x,y,distance):("+str(self.x)+","+str(self.y)+","+str(self.distance_score)+")"
 
-def apply_anms_to_img(corner_score_img,n_best,anms_local_maxima_threshold):
+def apply_anms_to_img(local_maxima_coords,corner_score_img,n_best):
     "input: "
     "output: numpy array of coordinates"
-    local_maxima_coords = peak_local_max(corner_score_img,min_distance=3,threshold_abs=anms_local_maxima_threshold)
 
     # initializing distances array
     distances = np.full(local_maxima_coords.shape[0],fill_value=CoOrds(0,0))
     for i,coords in enumerate(local_maxima_coords):
         distances[i] = CoOrds(coords[0],coords[1])
 
-
     ED = None
     for i,coord_i in enumerate(local_maxima_coords):
         for coord_j in local_maxima_coords:
             # print(i," ", corner_score_img[coord_j[0],coord_j[1]], " ", corner_score_img[coord_i[0],coord_i[1]])
             if (corner_score_img[coord_j[0],coord_j[1]] > corner_score_img[coord_i[0],coord_i[1]]):
-                ED = np.power((coord_j[0] - coord_i[0]),2) + np.power((coord_j[1]-coord_i[1]),2)
+                ED = (coord_j[0] - coord_i[0])**2 + (coord_j[1]-coord_i[1])**2
             if ED is not None and ED < distances[i].distance_score:
                 distances[i].distance_score = ED
+    
     sort_distances_obj = np.array(sorted(distances,reverse=True))
-    print(sort_distances_obj.shape)
+    print(f"Taking {n_best} out of {sort_distances_obj.shape}")
     sort_distances_obj = sort_distances_obj[0:n_best]
     
-    
-    sorted_dists_mat = np.zeros(shape=(sort_distances_obj.shape[0],2)) 
+    anms_coords = []
+    for coord in sort_distances_obj:
+        anms_coords.append([coord.x,coord.y])
 
-    for i,dist in enumerate(sort_distances_obj):
-        sorted_dists_mat[i] = np.array([int(sort_distances_obj[i].x), sort_distances_obj[i].y])
-    return sorted_dists_mat.astype(int)
+    anms_coords = np.array(anms_coords)
+    return anms_coords
 
 class FeatureDescriptor(cv2.KeyPoint):
     def __init__(self,x,y,corner_patch):
-        super().__init__(int(x),int(y),15)
+        super().__init__(int(y),int(x),15)
         self.feature_descriptor = corner_patch
     def __str__(self):
         return str(self.pt)
+    def getPatch(self):
+        return self.feature_descriptor
 
 def get_corner_descriptors(img_gray: List[List], corner_locs: np.array(List[List])) -> List[FeatureDescriptor]:
     corner_descriptors = []
     for (x, y) in corner_locs:
-        if x-20 < 0 or x+20>img_gray.shape[0] or y-20<0 or y+20>img_gray.shape[1]:
+        if x-20 <= 0 or x+20>img_gray.shape[0] or y-20<=0 or y+20>img_gray.shape[1]:
             continue
         corner_patch = img_gray[x-20:x+20, y-20:y+20]
-        corner_patch = cv2.GaussianBlur(corner_patch, (3, 3), 0)
-        corner_patch = cv2.resize(corner_patch, (8, 8), interpolation=cv2.INTER_AREA)
+
+        "subsampling every 25th pixel"
+        corner_patch = corner_patch.flatten()[::25]
+        corner_patch = np.reshape(corner_patch,newshape=(8,8))
+        corner_patch = standardize_image(corner_patch)
+        corner_patch = cv2.GaussianBlur(corner_patch, (3, 3), 1)
         feature_descriptor = FeatureDescriptor(x,y,corner_patch.flatten())
         corner_descriptors.append(feature_descriptor)
     return corner_descriptors
@@ -142,10 +195,12 @@ class DMatchWrapper():
         self.keypoint_distance = distance
     def __str__(self) -> str:
         return str(self.keypoint1)+str(self.keypoint2)
-def get_feature_matches(img1_descriptor: List[FeatureDescriptor], img2_descriptor: List[FeatureDescriptor], match_thresh: float = 0.9) -> List[List]:
+
+def get_feature_matches(img1_descriptor: List[FeatureDescriptor], img2_descriptor: List[FeatureDescriptor], match_thresh: float = 0.75) -> List[List]:
     feature_matches = []
     for point1 in img1_descriptor:
-        min_dist = second_min_dist = math.inf
+        min_dist = math.inf
+        second_min_dist = math.inf
         match_point2 = None
         for point2 in img2_descriptor:
             dist = math.dist(point1.feature_descriptor, point2.feature_descriptor)
@@ -153,7 +208,9 @@ def get_feature_matches(img1_descriptor: List[FeatureDescriptor], img2_descripto
                 second_min_dist = min_dist
                 min_dist = dist
                 match_point2 = point2
+    
         if (min_dist / second_min_dist) < match_thresh:
+            print(point1," ",match_point2)
             feature_matches.append(DMatchWrapper(point1, match_point2,min_dist))
 
     return feature_matches
@@ -161,30 +218,37 @@ def get_feature_matches(img1_descriptor: List[FeatureDescriptor], img2_descripto
 def main():
     # Add any Command Line arguments here
     Parser = argparse.ArgumentParser()
-    Parser.add_argument('--CorerHarrisBlockSize', default=4, help='Block Size for Harris Corner Detection, Default:7')
+    Parser.add_argument('--BasePath',default='../Data/Train',help='Base path to get images from,Default:../Data/Train/')
+    Parser.add_argument('--TestSet',default='Set1/',help='Test set to run algorithm on,Default:Set1')
+    Parser.add_argument('--CornerHarrisBlockSize', default=4, help='Block Size for Harris Corner Detection, Default:7')
     Parser.add_argument('--CornerHarrisSobelOpSize', default=5, help='Block Size for Harris Corner Detection, Default:11')
     Parser.add_argument('--CornerHarrisKParameter', default=0.04, help='Block Size for Harris Corner Detection, Default:0.04')
     Parser.add_argument('--ANMSLocalMaximaThreshold', default=0.01, help='ANMS Local maxima threshold, Default:0.01')
+    Parser.add_argument('--StdDevsThresholdForLocalMaxima',default=0.5,help='threshold for local maxima based on standard deviation of standardized corner score')
 
     Args = Parser.parse_args()
     ch_block_size = Args.CornerHarrisBlockSize
     ch_ksize = Args.CornerHarrisSobelOpSize
     ch_k = Args.CornerHarrisKParameter
-    ansm_local_maxima_threshold = Args.ANMSLocalMaximaThreshold
-
+    anms_local_maxima_threshold = Args.ANMSLocalMaximaThreshold
+    img_set = Args.TestSet
+    
+    base_path = '../Data/Train/'
+    # make corresponding output data
+    output_path = base_path + img_set + "output" 
+    #  If output data path doesn't exist make the path
+    # if(not (os.path.isdir(CheckPointPath))):
+    #    os.makedirs(CheckPointPath)
+    input_file_extension = '.jpg'
+    output_file_extension = '.png'
+    
     """
     Read a set of images for Panorama stitching
     """
-    base_path = '../Data/Train/'
-    img_set = 'Set1/'
-    img_sequence = '3'
-    img1 = cv2.imread(base_path + img_set + img_sequence + '.jpg')
-    
-    files = []
-    for file in glob.glob(base_path + img_set + "*.jpg",recursive=False):
-        files.append(file.replace("\\","/"))
-    print(files)
-    # images_color = np.array(shape=(1len(files))
+    files = glob.glob(base_path + img_set + "*" + input_file_extension,recursive=False)
+    files = [file.replace("\\","/") for file in files]
+    print("List of files to read:",files)
+    file_names = [file.replace(base_path+img_set,'').replace(input_file_extension,'') for file in files]
     images_color = []
     images_gray = []
     for image_file in files:
@@ -201,45 +265,85 @@ def main():
     Corner Detection
     Save Corner detection output as corners.png
     """
-    cornersOfImages = []
+    corners_of_images = []
     n_harris_corners_images = []
-    for i,image in enumerate(images_gray):
-        cornersOfImg = cv2.cornerHarris(image,ch_block_size,ch_ksize,ch_k) ### TODO need to try out Shi-Tomasi Corner Detection instead
-        n_harris_corners = np.sum(cornersOfImg>0.01*cornersOfImg.max())
-        
-        cornersOfImages.append(cornersOfImg)
-        n_harris_corners_images.append(n_harris_corners)
+    min_stddev = None
+    for i,file in enumerate(files):
+        corners_of_img = cv2.cornerHarris(images_gray[i],ch_block_size,ch_ksize,ch_k) ### TODO need to try out Shi-Tomasi Corner Detection instead
+        corners_of_img = standardize_image(corners_of_img)
+        n_harris_corners = np.sum(corners_of_img>0.01*corners_of_img.max())
+        [_,_,_,stddev] = calc_and_print_stats(file_names[i],corners_of_img)
+        if min_stddev is not None and stddev < min_stddev:
+            min_stddev = stddev
+        else:
+            min_stddev = stddev
 
-    cornersOfImages = np.array(cornersOfImages)
-    n_harris_corners_images = np.array(n_harris_corners_images)
-    # embed_and_plot_corners(images_color,cornersOfImages)
+        corners_of_images.append(corners_of_img)
+        n_harris_corners_images.append(n_harris_corners)
+    
+        write_image_output("pure_corners",file_names[i],output_file_extension,normalize(corners_of_img),base_path+img_set)
+    print(f"minimum standard deviation:{min_stddev}")
+    
+    local_max_corners_of_images = []
+    n_local_max_corners_images = []
+    local_max_corners_coords_of_images = []
+    for i,file in enumerate(files):
+        local_maxima_coords = peak_local_max(corners_of_images[i],min_distance=3,threshold_abs=min_stddev)
+        corner_local_maxima = np.zeros_like(corners_of_images[i])
+        corner_local_maxima[tuple(local_maxima_coords.T)] = 1
+        
+        write_image_output("max_corners_locs",file_names[i],output_file_extension,normalize(corner_local_maxima),base_path+img_set)
+        corner_local_maxima[tuple(local_maxima_coords.T)] = corners_of_images[i][tuple(local_maxima_coords.T)]
+        write_image_output("max_corners",file_names[i],output_file_extension,normalize(corner_local_maxima),base_path+img_set)
+
+        local_max_corners_of_images.append(corner_local_maxima)
+
+        n_local_max_corners_images.append(local_maxima_coords.size)
+        local_max_corners_coords_of_images.append([local_maxima_coords])
+
+    local_max_corners_of_images = np.array(local_max_corners_of_images)
+    n_local_max_corners_images = np.array(n_local_max_corners_images)
+    local_max_corners_coords_of_images = np.array(local_max_corners_coords_of_images)
+    for i,file in enumerate(files):
+        draw_markers("embed_max_corners",images_color[i],local_max_corners_coords_of_images[i][0],color=[0,255,0],file_name=file_names[i],output_file_extension=output_file_extension,path=base_path+img_set,display=False)
 
 
     """
     Perform ANMS: Adaptive Non-Maximal Suppression
     Save ANMS output as anms.png
     """
-    anms_distances = []
-    for i in range(len(images_color)):
-        anms_distances.append(apply_anms_to_img(cornersOfImages[i],1000,anms_local_maxima_threshold))
+    anms_coords_of_images = []
+    for i,file in enumerate(files):
+        anms_coords_of_images.append(apply_anms_to_img(local_max_corners_coords_of_images[i][0],local_max_corners_of_images[i],200))
 
-    anms_distances = np.array(anms_distances)
-    # embed_and_plot_corners(images_color,images_corner_points=anms_distances)
+    anms_coords_of_images = np.array(anms_coords_of_images)
+    for i,file in enumerate(files):
+        draw_markers("anms_corners",images_color[i],anms_coords_of_images[i],color=[0,255,0],file_name=file_names[i],output_file_extension=output_file_extension,path=base_path+img_set,display=False)
 
-    """
-    Feature Descriptors
-    Save Feature Descriptor output as FD.png
-    """
+    # """
+    # Feature Descriptors
+    # Save Feature Descriptor output as FD.png
+    # """
+    
     images_corner_descriptors = []
-    for i in range(len(images_color)):
-        images_corner_descriptors.append(get_corner_descriptors(images_gray[i],anms_distances[i]))
+    for i,file in enumerate(files):
+        images_corner_descriptors.append([get_corner_descriptors(images_gray[i],anms_coords_of_images[i])])
+    
+    rand_img_i = random.randint(0,len(files)-1)
+    rand_img_corner_j = random.randint(0,len(images_corner_descriptors[rand_img_i][0])-1)
+    rand_patch = images_corner_descriptors[rand_img_i][0][rand_img_corner_j].getPatch()
+    rand_patch = np.reshape(rand_patch,newshape=(8,8))
+    write_image_output(f"image{rand_img_i}_corner{rand_img_corner_j}",file_names[rand_img_i],
+            output_file_extension,
+            rand_patch,
+            base_path+img_set,display=True)
 
-    """
-    Feature Matching
-    Save Feature Matching output as matching.png
-    """
-    feature_matches = get_feature_matches(images_corner_descriptors[0],images_corner_descriptors[1])
-    feature_points = []
+    # """
+    # Feature Matching
+    # Save Feature Matching output as matching.png
+    # """
+    feature_matches = get_feature_matches(images_corner_descriptors[0][0],images_corner_descriptors[1][0])
+    print(feature_matches[0])
     keypoints1 = []
     keypoints2 = []
     matches = []
@@ -258,6 +362,10 @@ def main():
         img2=images_color[1],
         keypoints2=keypoints2,
         matches1to2=matches,outImg = ret,matchesThickness=1)
+    plt.imshow(cvt_for_plt(drew_image))
+    # plt.savefig("drew_image",dpi=300)
+    cv2.imshow("drew_image",drew_image)
+    cv2.waitKey(0)
 
     """
     Refine: RANSAC, Estimate Homography
