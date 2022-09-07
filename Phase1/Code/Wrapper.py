@@ -210,7 +210,6 @@ def get_feature_matches(img1_descriptor: List[FeatureDescriptor], img2_descripto
                 match_point2 = point2
     
         if (min_dist / second_min_dist) < match_thresh:
-            print(point1," ",match_point2)
             feature_matches.append(DMatchWrapper(point1, match_point2,min_dist))
 
     return feature_matches
@@ -223,22 +222,17 @@ def main():
     Parser.add_argument('--CornerHarrisBlockSize', default=4, help='Block Size for Harris Corner Detection, Default:7')
     Parser.add_argument('--CornerHarrisSobelOpSize', default=5, help='Block Size for Harris Corner Detection, Default:11')
     Parser.add_argument('--CornerHarrisKParameter', default=0.04, help='Block Size for Harris Corner Detection, Default:0.04')
-    Parser.add_argument('--ANMSLocalMaximaThreshold', default=0.01, help='ANMS Local maxima threshold, Default:0.01')
-    Parser.add_argument('--StdDevsThresholdForLocalMaxima',default=0.5,help='threshold for local maxima based on standard deviation of standardized corner score')
+    Parser.add_argument('--StdDevThresholdFactorForLocalMaxima',default=1,help='threshold for local maxima based on standard deviation of standardized corner score,Default:1')
+    Parser.add_argument('--RansacMaxIterations',default=10000,help='Maximum number of iterations a RANSAC algorithm should run, Default:10000')
 
     Args = Parser.parse_args()
     ch_block_size = Args.CornerHarrisBlockSize
     ch_ksize = Args.CornerHarrisSobelOpSize
     ch_k = Args.CornerHarrisKParameter
-    anms_local_maxima_threshold = Args.ANMSLocalMaximaThreshold
+    n_max_ransac_iterations = Args.RansacMaxIterations
+    local_maxima_stddev_threshold_factor = Args.StdDevThresholdFactorForLocalMaxima
+    base_path = Args.BasePath
     img_set = Args.TestSet
-    
-    base_path = '../Data/Train/'
-    # make corresponding output data
-    output_path = base_path + img_set + "output" 
-    #  If output data path doesn't exist make the path
-    # if(not (os.path.isdir(CheckPointPath))):
-    #    os.makedirs(CheckPointPath)
     input_file_extension = '.jpg'
     output_file_extension = '.png'
     
@@ -288,7 +282,7 @@ def main():
     n_local_max_corners_images = []
     local_max_corners_coords_of_images = []
     for i,file in enumerate(files):
-        local_maxima_coords = peak_local_max(corners_of_images[i],min_distance=3,threshold_abs=min_stddev)
+        local_maxima_coords = peak_local_max(corners_of_images[i],min_distance=3,threshold_abs=min_stddev*local_maxima_stddev_threshold_factor)
         corner_local_maxima = np.zeros_like(corners_of_images[i])
         corner_local_maxima[tuple(local_maxima_coords.T)] = 1
         
@@ -320,11 +314,10 @@ def main():
     for i,file in enumerate(files):
         draw_markers("anms_corners",images_color[i],anms_coords_of_images[i],color=[0,255,0],file_name=file_names[i],output_file_extension=output_file_extension,path=base_path+img_set,display=False)
 
-    # """
-    # Feature Descriptors
-    # Save Feature Descriptor output as FD.png
-    # """
-    
+    """
+    Feature Descriptors
+    Save Feature Descriptor output as FD.png
+    """
     images_corner_descriptors = []
     for i,file in enumerate(files):
         images_corner_descriptors.append([get_corner_descriptors(images_gray[i],anms_coords_of_images[i])])
@@ -336,41 +329,56 @@ def main():
     write_image_output(f"image{rand_img_i}_corner{rand_img_corner_j}",file_names[rand_img_i],
             output_file_extension,
             rand_patch,
-            base_path+img_set,display=True)
+            base_path+img_set,display=False)
 
-    # """
-    # Feature Matching
-    # Save Feature Matching output as matching.png
-    # """
-    feature_matches = get_feature_matches(images_corner_descriptors[0][0],images_corner_descriptors[1][0])
-    print(feature_matches[0])
-    keypoints1 = []
-    keypoints2 = []
-    matches = []
-    for i,feature_descriptor_dmatch in enumerate(feature_matches):
-        keypoints1.append(feature_descriptor_dmatch.keypoint1)
-        keypoints2.append(feature_descriptor_dmatch.keypoint2)
-        matches.append(cv2.DMatch(i,i,feature_descriptor_dmatch.keypoint_distance))
-    keypoints1 = np.array(keypoints1)
-    keypoints2 = np.array(keypoints2)
-    print(keypoints1[0].pt)
-    print(keypoints2[0].pt)
+    """
+    Feature Matching
+    Save Feature Matching output as matching.png
+    """
+    images_feature_matches = []
+    for first_image_idx, file in enumerate(files):
+        for second_image_idx in range(first_image_idx+1,len(files)):
+            feature_matches = get_feature_matches(images_corner_descriptors[first_image_idx][0],images_corner_descriptors[second_image_idx][0])
+            images_feature_matches.append(feature_matches)
+            
+            """
+            Below portion of the code is to draw image correlations
+            """
+            keypoints1 = []
+            keypoints2 = []
+            matches = []
+            for i,feature_descriptor_dmatch in enumerate(feature_matches):
+                keypoints1.append(feature_descriptor_dmatch.keypoint1)
+                keypoints2.append(feature_descriptor_dmatch.keypoint2)
+                matches.append(cv2.DMatch(i,i,feature_descriptor_dmatch.keypoint_distance))
+            keypoints1 = np.array(keypoints1)
+            keypoints2 = np.array(keypoints2)
 
-    ret = np.array([])
-    drew_image = cv2.drawMatches(img1=images_color[0],
-        keypoints1=keypoints1,
-        img2=images_color[1],
-        keypoints2=keypoints2,
-        matches1to2=matches,outImg = ret,matchesThickness=1)
-    plt.imshow(cvt_for_plt(drew_image))
-    # plt.savefig("drew_image",dpi=300)
-    cv2.imshow("drew_image",drew_image)
-    cv2.waitKey(0)
+            ret = np.array([])
+            drew_image = cv2.drawMatches(img1=images_color[first_image_idx],
+                keypoints1=keypoints1,
+                img2=images_color[second_image_idx],
+                keypoints2=keypoints2,
+                matches1to2=matches,outImg = ret,matchesThickness=1)
+            write_image_output(f"feature_matches_",f"{first_image_idx}_{second_image_idx}",output_file_extension,drew_image,base_path+img_set)
 
+    
+
+    
     """
     Refine: RANSAC, Estimate Homography
     """
+    homography_mats = []
+    for i,image_pair_feature_matches in enumerate(images_feature_matches):
+        current_max_inliers = []
+        for i in range(n_max_ransac_iterations):
+            if len(current_max_inliers) > len(images_feature_matches):
+                break
+            random
 
+
+
+    
     """
     Image Warping + Blending
     Save Panorama output as mypano.png
