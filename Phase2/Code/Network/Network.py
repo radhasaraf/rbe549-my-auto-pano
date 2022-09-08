@@ -73,6 +73,64 @@ class Net(nn.Module):
         #############################
         # Fill your network initialization of choice here!
         #############################
+        self.conv1 = nn.Sequential(
+                nn.Conv2d(2,64,kernel_size=3,stride=1,padding=1),
+                nn.BatchNorm2d(),
+                nn.ReLU()
+                )
+        
+        self.conv2 = nn.Sequential(
+                nn.Conv2d(64,64,kernel_size=3,stride=1,padding=1),
+                nn.BatchNorm2d(),
+                nn.ReLU()
+        )
+
+        self.maxpool1 = nn.MaxPool2d(kernel_size=2,stride=2)
+        
+        self.conv3 = nn.Sequential(
+                nn.Conv2d(64,64,kernel_size=3,stride=1,padding=1),
+                nn.BatchNorm2d(),
+                nn.ReLU()
+        )
+        self.conv4 = nn.Sequntial(
+                nn.Con2d(64,64,kernel_size=3,stride=1,padding=1),
+                nn.BatchNorm2d(),
+                nn.ReLU()
+        )
+
+        self.maxpool2 = nn.MaxPool2d(kernel_size=2,stride=2)
+
+        self.conv5 = nn.Sequntial(
+                nn.Con2d(128,128,kernel_size=3,stride=1,padding=1),
+                nn.BatchNorm2d(),
+                nn.ReLU()
+        )
+        self.conv6 = nn.Sequntial(
+                nn.Con2d(128,128,kernel_size=3,stride=1,padding=1),
+                nn.BatchNorm2d(),
+                nn.ReLU()
+        )
+        self.maxpool3 = nn.MaxPool2d(kernel_size=2,stride=2)
+
+        self.conv7 = nn.Sequntial(
+                nn.Con2d(128,128,kernel_size=3,stride=1,padding=1),
+                nn.BatchNorm2d(),
+                nn.ReLU()
+        )
+        self.conv8 = nn.Sequntial(
+                nn.Con2d(128,128,kernel_size=3,stride=1,padding=1),
+                nn.BatchNorm2d(),
+                nn.ReLU()
+        )
+        self.maxpool4 = nn.MaxPool2d(kernel_size=2,stride=2)
+
+        self.fc1 = nn.Linear(16*16*128,1024)
+        self.dropout1 = nn.Dropout(0.5)
+    
+        self.fc2 = nn.Linear(1024,8)
+        self.dropout2 = nn.Dropout(0.5)
+
+
         ...
         #############################
         # You will need to change the input size and output
@@ -126,4 +184,22 @@ class Net(nn.Module):
         #############################
         # Fill your network structure of choice here!
         #############################
-        return out
+        x = torch.concat([xa,xb],axis=2)
+        x = self.conv1(x)
+        x = self.conv2(x)
+        x = self.maxpool1(x)
+        x = self.conv3(x)
+        x = self.conv4(x)
+        x = self.maxpool2(x)
+        x = self.conv5(x)
+        x = self.conv6(x)
+        x = self.maxpool3(x)
+        x = self.conv7(x)
+        x = self.conv8(x)
+        x = self.maxpool4(x)
+        x = self.fc1(x)
+        x = self.dropout1(x)
+        x = self.fc2(x)
+        x = self.dropout2(x)
+
+        return x

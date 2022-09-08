@@ -198,6 +198,9 @@ class DMatchWrapper():
 
 def get_feature_matches(img1_descriptor: List[FeatureDescriptor], img2_descriptor: List[FeatureDescriptor], match_thresh: float = 0.75) -> List[List]:
     feature_matches = []
+    keypoints1 = []
+    keypoints2 = []
+    keypoint_distances = [] 
     for point1 in img1_descriptor:
         min_dist = math.inf
         second_min_dist = math.inf
@@ -210,14 +213,17 @@ def get_feature_matches(img1_descriptor: List[FeatureDescriptor], img2_descripto
                 match_point2 = point2
     
         if (min_dist / second_min_dist) < match_thresh:
+            keypoints1.append(point1)
+            keypoints2.append(match_point2)
+            keypoint_distances.append(min_dist)
             feature_matches.append(DMatchWrapper(point1, match_point2,min_dist))
 
-    return feature_matches
+    return [keypoints1,keypoints2,keypoint_distances,feature_matches] ## TODO return only keypoints and distances
 
 def main():
     # Add any Command Line arguments here
     Parser = argparse.ArgumentParser()
-    Parser.add_argument('--BasePath',default='../Data/Train',help='Base path to get images from,Default:../Data/Train/')
+    Parser.add_argument('--BasePath',default='../Data/Train/',help='Base path to get images from,Default:../Data/Train/')
     Parser.add_argument('--TestSet',default='Set1/',help='Test set to run algorithm on,Default:Set1')
     Parser.add_argument('--CornerHarrisBlockSize', default=4, help='Block Size for Harris Corner Detection, Default:7')
     Parser.add_argument('--CornerHarrisSobelOpSize', default=5, help='Block Size for Harris Corner Detection, Default:11')
@@ -239,6 +245,7 @@ def main():
     """
     Read a set of images for Panorama stitching
     """
+    print(base_path+img_set)
     files = glob.glob(base_path + img_set + "*" + input_file_extension,recursive=False)
     files = [file.replace("\\","/") for file in files]
     print("List of files to read:",files)
@@ -322,6 +329,7 @@ def main():
     for i,file in enumerate(files):
         images_corner_descriptors.append([get_corner_descriptors(images_gray[i],anms_coords_of_images[i])])
     
+    print(len(files))
     rand_img_i = random.randint(0,len(files)-1)
     rand_img_corner_j = random.randint(0,len(images_corner_descriptors[rand_img_i][0])-1)
     rand_patch = images_corner_descriptors[rand_img_i][0][rand_img_corner_j].getPatch()
@@ -336,10 +344,14 @@ def main():
     Save Feature Matching output as matching.png
     """
     images_feature_matches = []
+    image_keypoints1_list = []
+    image_keypoints2_list = []
     for first_image_idx, file in enumerate(files):
         for second_image_idx in range(first_image_idx+1,len(files)):
-            feature_matches = get_feature_matches(images_corner_descriptors[first_image_idx][0],images_corner_descriptors[second_image_idx][0])
+            (img1_keypoints,img2_keypoints,_,feature_matches) = get_feature_matches(images_corner_descriptors[first_image_idx][0],images_corner_descriptors[second_image_idx][0])
             images_feature_matches.append(feature_matches)
+            image_keypoints1_list.append(np.array(img1_keypoints))
+            image_keypoints2_list.append(np.array(img2_keypoints))
             
             """
             Below portion of the code is to draw image correlations
@@ -362,20 +374,47 @@ def main():
                 matches1to2=matches,outImg = ret,matchesThickness=1)
             write_image_output(f"feature_matches_",f"{first_image_idx}_{second_image_idx}",output_file_extension,drew_image,base_path+img_set)
 
-    
+    image_keypoints1_list = np.array(image_keypoints1_list)
+    image_keypoints2_list = np.array(image_keypoints2_list)
 
     
     """
     Refine: RANSAC, Estimate Homography
     """
     homography_mats = []
-    for i,image_pair_feature_matches in enumerate(images_feature_matches):
+    for i,feat_matches in enumerate(images_feature_matches):
         current_max_inliers = []
-        for i in range(n_max_ransac_iterations):
-            if len(current_max_inliers) > len(images_feature_matches):
-                break
-            random
+        
+        img_kp1_list = np.array([point.pt for point in image_keypoints1_list[i]])
+        img_kp2_list = np.array([point.pt for point in image_keypoints2_list[i]])
+        X = np.append(img_kp1_list,np.ones(shape=(1,img_kp1_list.shape[0])).T,axis=1)
+    
+        print(img_kp1_list.shape)
 
+        for iter in range(n_max_ransac_iterations):
+            if len(current_max_inliers) > len(feat_matches):
+                break
+            
+            homography_points_inds = random.sample(range(len(img_kp1_list)-1),4)
+
+            homography_points_src = img_kp1_list[homography_points_inds]
+            homography_points_dst = img_kp2_list[homography_points_inds]
+            
+            H = cv2.findHomography(homography_points_src,homography_points_dst)  # TODO: Implement your own
+            X_proj = np.dot(H[0],(X.T))
+            X_proj = np.array([X_proj[0]/X_proj[2],X_proj[1]/X_proj[2]]).T
+
+
+            error = np.sum((img_kp2_list - X_proj)**2,axis=1)
+
+            curr_iter_inliers = np.sum(error < 25)
+            if curr_iter_inliers > np.sum(current_max_inliers):
+                current_max_inliers = (error < 25)
+
+        inlier_src = img_kp1_list[current_max_inliers]
+        inlier_dst = img_kp2_list[current_max_inliers]
+        homography_mats.append(cv2.findHomography(inlier_src, inlier_dst))
+        
 
 
     
@@ -387,3 +426,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+print("end of file")
