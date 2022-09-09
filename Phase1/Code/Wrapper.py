@@ -13,6 +13,7 @@ Worcester Polytechnic Institute
 """
 
 # Code starts here:
+from gettext import translation
 from multiprocessing.sharedctypes import Value
 import numpy as np
 import cv2
@@ -27,6 +28,7 @@ from skimage.feature import corner_peaks,peak_local_max
 from typing import List
 import math
 import random
+import warnings
 
 
 # Helper funcs
@@ -121,6 +123,40 @@ def embed_and_plot_corners(color_images,images_corner_score=None,images_corner_p
 ## ANMS
 from functools import total_ordering
 
+def get_corners(img,bsize,ksize,k,file_name,output_extn,output_path):
+    corners_of_img = cv2.cornerHarris(img,bsize,ksize,k) ### TODO need to try out Shi-Tomasi Corner Detection instead
+    corners_of_img = standardize_image(corners_of_img)
+    n_harris_corners = np.sum(corners_of_img>0.01*corners_of_img.max())
+    [_,_,_,stddev] = calc_and_print_stats(file_name,corners_of_img)
+    
+    write_image_output("pure_corners",
+            file_name,
+            output_extn,
+            normalize(corners_of_img),
+            output_path)
+    
+    return corners_of_img,n_harris_corners,stddev
+
+def apply_corners_local_maxima(corner_image,stddev,factor,file_name,output_ext,output_path):
+    local_maxima_coords = peak_local_max(corner_image,min_distance=3,threshold_abs=stddev*factor)
+    corner_local_maxima = np.zeros_like(corner_image)
+    corner_local_maxima[tuple(local_maxima_coords.T)] = 1
+    
+    write_image_output("max_corners_locs",
+            file_name,
+            output_ext,
+            normalize(corner_local_maxima),
+            output_path)
+    
+    corner_local_maxima[tuple(local_maxima_coords.T)] = corner_image[tuple(local_maxima_coords.T)]
+    
+    write_image_output("max_corners",
+            file_name,
+            output_ext,
+            normalize(corner_local_maxima),
+            output_path)
+
+    return corner_image,local_maxima_coords
 
 @total_ordering
 class CoOrds:
@@ -187,17 +223,17 @@ def get_corner_descriptors(img_gray: List[List], corner_locs: np.array(List[List
         corner_descriptors.append(feature_descriptor)
     return corner_descriptors
 
-
-class DMatchWrapper():
-    def __init__(self,point1,point2,distance) -> None:
-        self.keypoint1 = point1
-        self.keypoint2 = point2
-        self.keypoint_distance = distance
-    def __str__(self) -> str:
-        return str(self.keypoint1)+str(self.keypoint2)
+def draw_random_corner_patch(img_fds,file_names,output_extension,output_path,display=False):
+    rand_img_i = random.randint(0,len(file_names)-1)
+    rand_img_corner_j = random.randint(0,len(img_fds[rand_img_i][0])-1)
+    rand_patch = img_fds[rand_img_i][0][rand_img_corner_j].getPatch()
+    rand_patch = np.reshape(rand_patch,newshape=(8,8))
+    write_image_output(f"image{rand_img_i}_corner{rand_img_corner_j}",file_names[rand_img_i],
+            output_extension,
+            rand_patch,
+            output_path,display=display)
 
 def get_feature_matches(img1_descriptor: List[FeatureDescriptor], img2_descriptor: List[FeatureDescriptor], match_thresh: float = 0.75) -> List[List]:
-    feature_matches = []
     keypoints1 = []
     keypoints2 = []
     keypoint_distances = [] 
@@ -216,9 +252,113 @@ def get_feature_matches(img1_descriptor: List[FeatureDescriptor], img2_descripto
             keypoints1.append(point1)
             keypoints2.append(match_point2)
             keypoint_distances.append(min_dist)
-            feature_matches.append(DMatchWrapper(point1, match_point2,min_dist))
+    
+    keypoints1 = np.array(keypoints1)
+    keypoints2 = np.array(keypoints2)
+    keypoint_distances = np.array(keypoint_distances) 
 
-    return [keypoints1,keypoints2,keypoint_distances,feature_matches] ## TODO return only keypoints and distances
+    return [keypoints1,keypoints2,keypoint_distances]
+
+def draw_feature_matches(keypoints1,keypoints2,keypoints_distances,images_color,first_image_idx,second_image_idx,output_file_extension,output_path,suffix=""):
+    matches = []
+    for i,feature_descriptor_dmatch in enumerate(keypoints_distances):
+        matches.append(cv2.DMatch(i,i,keypoints_distances[i]))
+
+    ret = np.array([])
+    drew_image = cv2.drawMatches(img1=images_color[first_image_idx],
+        keypoints1=keypoints1,
+        img2=images_color[second_image_idx],
+        keypoints2=keypoints2,
+        matches1to2=matches,outImg = ret,matchesThickness=1)
+    write_image_output(f"{suffix}feature_matches_",f"{first_image_idx}_{second_image_idx}",output_file_extension,drew_image,output_path)
+
+def perform_ransac(max_ransac_iters,first_kps,second_kps):
+    kps_src = np.array([point.pt for point in first_kps])
+    kps_dst = np.array([point.pt for point in second_kps])
+    
+    X = np.append(kps_src,np.ones(shape=(1,kps_src.shape[0])).T,axis=1)    
+    print(kps_src.shape)
+
+    max_inliers = []
+    for iter in range(max_ransac_iters):
+        if len(max_inliers) > len(kps_src): ## TODO percentage parameter for inliers_count
+            break
+        
+        homography_points_inds = random.sample(range(len(kps_src)-1),4)
+        homography_points_src = kps_src[homography_points_inds]
+        homography_points_dst = kps_dst[homography_points_inds]
+        
+        H = cv2.findHomography(homography_points_src,homography_points_dst)  # TODO: Implement your own
+        if (H[0] is None):
+            continue
+        X_proj = np.dot(H[0],(X.T))
+        try:
+            X_proj = np.array([X_proj[0]/X_proj[2],X_proj[1]/X_proj[2]]).T
+        except RuntimeWarning:
+            """
+            projection division can give incorrect values
+            """
+            continue
+
+        error = np.sum((kps_dst - X_proj)**2,axis=1)
+
+        curr_iter_inliers = np.sum(error < 25) ## TODO threshold as parameter
+        if curr_iter_inliers > np.sum(max_inliers):
+            max_inliers = (error < 25)
+    
+    return max_inliers
+
+def find_homography(first_kps,second_kps,kps_inds):
+    kps_src = np.array([point.pt for point in first_kps])
+    kps_dst = np.array([point.pt for point in second_kps])
+    inlier_src = kps_src[kps_inds]
+    inlier_dst = kps_dst[kps_inds]
+    H = cv2.findHomography(inlier_src,inlier_dst)[0]
+    return H
+
+
+def draw_homographed_img(imgs,img1_idx,img2_idx,H,file_names,output_extn,output_path,display=False):
+    
+    tf_img1 = get_full_homography_img(imgs[img1_idx],H)
+    write_image_output(f"image{img1_idx+1}_{img2_idx+1}_perspective",
+            file_names[img1_idx],
+            output_extn,
+            tf_img1,
+            output_path,display=False)
+    
+
+def get_tf_coords(H,img_shape):
+    """
+    get output image dimensions for full image after aplying Homography 
+    this is needed for warpPerspective function
+    """
+    coords = np.array([[0,0,1],[0,1,1],[1,0,1],[1,1,1]],dtype=list).T
+    coords[0] = coords[0][:]*img_shape[1] # this is because row and column are y and x
+    coords[1] = coords[1][:]*img_shape[0]
+    tf_coords = np.dot(H,coords)
+    try:
+        tf_coords = np.array([tf_coords[0]/tf_coords[2],tf_coords[1]/tf_coords[2]])
+    except RuntimeWarning:
+        print("something is wrong")
+        return None
+    
+    print(f"image coordinates changed from {coords[0:2]} will be {tf_coords}")
+    min_translation = np.ceil(np.min(tf_coords,axis=1)).astype('int')[:,None].T
+    print(f"minimum translation needed {min_translation}")
+    tf_coords_max = np.ceil(np.max(tf_coords,axis=1) - np.min(tf_coords,axis=1)).astype('int')
+    tf_coords_max += 10 #giving a buffer of 10 pixels
+    tf_coords_max = tuple(tf_coords_max)
+    print(f"dim changed from {(img_shape[1],img_shape[0])} to {tf_coords_max}")
+    return [min_translation,tf_coords_max]
+
+def get_full_homography_img(img,H):
+    img_shape = img.shape
+    [min_translation,tf_coords] = get_tf_coords(H,img_shape)
+    translation_mat = np.zeros_like(H)
+    translation_mat[0:2,2] = -min_translation
+    tf_homograph_mat = H + translation_mat
+    tf_img = cv2.warpPerspective(img,tf_homograph_mat,tf_coords) 
+    return tf_img
 
 def main():
     # Add any Command Line arguments here
@@ -247,6 +387,7 @@ def main():
     """
     print(base_path+img_set)
     files = glob.glob(base_path + img_set + "*" + input_file_extension,recursive=False)
+    files.sort()
     files = [file.replace("\\","/") for file in files]
     print("List of files to read:",files)
     file_names = [file.replace(base_path+img_set,'').replace(input_file_extension,'') for file in files]
@@ -270,43 +411,36 @@ def main():
     n_harris_corners_images = []
     min_stddev = None
     for i,file in enumerate(files):
-        corners_of_img = cv2.cornerHarris(images_gray[i],ch_block_size,ch_ksize,ch_k) ### TODO need to try out Shi-Tomasi Corner Detection instead
-        corners_of_img = standardize_image(corners_of_img)
-        n_harris_corners = np.sum(corners_of_img>0.01*corners_of_img.max())
-        [_,_,_,stddev] = calc_and_print_stats(file_names[i],corners_of_img)
+        (img_corners,corner_count,stddev) = get_corners(images_gray[i],ch_block_size,ch_ksize,ch_k,file_names[i],output_file_extension,base_path+img_set)
         if min_stddev is not None and stddev < min_stddev:
             min_stddev = stddev
         else:
             min_stddev = stddev
-
-        corners_of_images.append(corners_of_img)
-        n_harris_corners_images.append(n_harris_corners)
-    
-        write_image_output("pure_corners",file_names[i],output_file_extension,normalize(corners_of_img),base_path+img_set)
+        corners_of_images.append(img_corners)
+        n_harris_corners_images.append(corner_count)
     print(f"minimum standard deviation:{min_stddev}")
     
+
+    """
+    local maxima
+    """
     local_max_corners_of_images = []
-    n_local_max_corners_images = []
     local_max_corners_coords_of_images = []
     for i,file in enumerate(files):
-        local_maxima_coords = peak_local_max(corners_of_images[i],min_distance=3,threshold_abs=min_stddev*local_maxima_stddev_threshold_factor)
-        corner_local_maxima = np.zeros_like(corners_of_images[i])
-        corner_local_maxima[tuple(local_maxima_coords.T)] = 1
-        
-        write_image_output("max_corners_locs",file_names[i],output_file_extension,normalize(corner_local_maxima),base_path+img_set)
-        corner_local_maxima[tuple(local_maxima_coords.T)] = corners_of_images[i][tuple(local_maxima_coords.T)]
-        write_image_output("max_corners",file_names[i],output_file_extension,normalize(corner_local_maxima),base_path+img_set)
-
-        local_max_corners_of_images.append(corner_local_maxima)
-
-        n_local_max_corners_images.append(local_maxima_coords.size)
-        local_max_corners_coords_of_images.append([local_maxima_coords])
+        (corner_image,corner_image_coords) = apply_corners_local_maxima(corners_of_images[i],
+                min_stddev,
+                local_maxima_stddev_threshold_factor,
+                file_names[i],
+                output_file_extension,
+                base_path + img_set)
+        local_max_corners_of_images.append(corner_image)
+        local_max_corners_coords_of_images.append(corner_image_coords)
 
     local_max_corners_of_images = np.array(local_max_corners_of_images)
-    n_local_max_corners_images = np.array(n_local_max_corners_images)
-    local_max_corners_coords_of_images = np.array(local_max_corners_coords_of_images)
+    local_max_corners_coords_of_images = np.array(local_max_corners_coords_of_images,dtype=list)
+    
     for i,file in enumerate(files):
-        draw_markers("embed_max_corners",images_color[i],local_max_corners_coords_of_images[i][0],color=[0,255,0],file_name=file_names[i],output_file_extension=output_file_extension,path=base_path+img_set,display=False)
+        draw_markers("embed_max_corners",images_color[i],local_max_corners_coords_of_images[i],color=[0,255,0],file_name=file_names[i],output_file_extension=output_file_extension,path=base_path+img_set,display=False)
 
 
     """
@@ -315,9 +449,9 @@ def main():
     """
     anms_coords_of_images = []
     for i,file in enumerate(files):
-        anms_coords_of_images.append(apply_anms_to_img(local_max_corners_coords_of_images[i][0],local_max_corners_of_images[i],200))
+        anms_coords_of_images.append(apply_anms_to_img(local_max_corners_coords_of_images[i],local_max_corners_of_images[i],200))
 
-    anms_coords_of_images = np.array(anms_coords_of_images)
+    anms_coords_of_images = np.array(anms_coords_of_images,dtype=np.ndarray)
     for i,file in enumerate(files):
         draw_markers("anms_corners",images_color[i],anms_coords_of_images[i],color=[0,255,0],file_name=file_names[i],output_file_extension=output_file_extension,path=base_path+img_set,display=False)
 
@@ -329,93 +463,71 @@ def main():
     for i,file in enumerate(files):
         images_corner_descriptors.append([get_corner_descriptors(images_gray[i],anms_coords_of_images[i])])
     
-    print(len(files))
-    rand_img_i = random.randint(0,len(files)-1)
-    rand_img_corner_j = random.randint(0,len(images_corner_descriptors[rand_img_i][0])-1)
-    rand_patch = images_corner_descriptors[rand_img_i][0][rand_img_corner_j].getPatch()
-    rand_patch = np.reshape(rand_patch,newshape=(8,8))
-    write_image_output(f"image{rand_img_i}_corner{rand_img_corner_j}",file_names[rand_img_i],
-            output_file_extension,
-            rand_patch,
-            base_path+img_set,display=False)
+    draw_random_corner_patch(images_corner_descriptors,file_names,output_file_extension,base_path+img_set)
+   
 
     """
     Feature Matching
     Save Feature Matching output as matching.png
     """
     images_feature_matches = []
-    image_keypoints1_list = []
-    image_keypoints2_list = []
-    for first_image_idx, file in enumerate(files):
+    for first_image_idx, file in enumerate(files): # TODO run for all p an c
         for second_image_idx in range(first_image_idx+1,len(files)):
-            (img1_keypoints,img2_keypoints,_,feature_matches) = get_feature_matches(images_corner_descriptors[first_image_idx][0],images_corner_descriptors[second_image_idx][0])
-            images_feature_matches.append(feature_matches)
-            image_keypoints1_list.append(np.array(img1_keypoints))
-            image_keypoints2_list.append(np.array(img2_keypoints))
+            (img1_keypoints,img2_keypoints,img12_keypoints_distances) = get_feature_matches(images_corner_descriptors[first_image_idx][0],images_corner_descriptors[second_image_idx][0])
+            images_feature_matches.append([
+                        first_image_idx,
+                        second_image_idx,
+                        img1_keypoints,
+                        img2_keypoints,
+                        img12_keypoints_distances
+                    ])
             
             """
             Below portion of the code is to draw image correlations
             """
-            keypoints1 = []
-            keypoints2 = []
-            matches = []
-            for i,feature_descriptor_dmatch in enumerate(feature_matches):
-                keypoints1.append(feature_descriptor_dmatch.keypoint1)
-                keypoints2.append(feature_descriptor_dmatch.keypoint2)
-                matches.append(cv2.DMatch(i,i,feature_descriptor_dmatch.keypoint_distance))
-            keypoints1 = np.array(keypoints1)
-            keypoints2 = np.array(keypoints2)
-
-            ret = np.array([])
-            drew_image = cv2.drawMatches(img1=images_color[first_image_idx],
-                keypoints1=keypoints1,
-                img2=images_color[second_image_idx],
-                keypoints2=keypoints2,
-                matches1to2=matches,outImg = ret,matchesThickness=1)
-            write_image_output(f"feature_matches_",f"{first_image_idx}_{second_image_idx}",output_file_extension,drew_image,base_path+img_set)
-
-    image_keypoints1_list = np.array(image_keypoints1_list)
-    image_keypoints2_list = np.array(image_keypoints2_list)
-
+            draw_feature_matches(img1_keypoints,
+                    img2_keypoints,
+                    img12_keypoints_distances,
+                    images_color,
+                    first_image_idx,
+                    second_image_idx,
+                    output_file_extension,
+                    base_path+img_set)
     
     """
     Refine: RANSAC, Estimate Homography
     """
-    homography_mats = []
-    for i,feat_matches in enumerate(images_feature_matches):
-        current_max_inliers = []
+    warnings.filterwarnings("error")
+    imgs_inliers_list = []
+    homography_mats = np.empty(shape=(len(images_feature_matches),3,3))
+    for i,(img1_idx,img2_idx,first_image_keypoints,second_image_keypoints,keypoints_distances) in enumerate(images_feature_matches):
         
-        img_kp1_list = np.array([point.pt for point in image_keypoints1_list[i]])
-        img_kp2_list = np.array([point.pt for point in image_keypoints2_list[i]])
-        X = np.append(img_kp1_list,np.ones(shape=(1,img_kp1_list.shape[0])).T,axis=1)
+        
+        max_inliers = perform_ransac(n_max_ransac_iterations,
+            first_image_keypoints,
+            second_image_keypoints)
+        
+        imgs_inliers_list.append(max_inliers)
+       
+        """
+        show output of ransac homography
+        """
+        draw_feature_matches(first_image_keypoints[max_inliers],
+                    second_image_keypoints[max_inliers],
+                    keypoints_distances[max_inliers],
+                    images_color,
+                    img1_idx,
+                    img2_idx,
+                    output_file_extension,
+                    base_path+img_set,
+                    "ransac_")
+
+
+        homography_mats[i] = find_homography(first_image_keypoints,second_image_keypoints,max_inliers)
+        draw_homographed_img(images_color,img1_idx,img2_idx,homography_mats[i],file_names,output_file_extension,base_path+img_set)
+        # break
+    warnings.filterwarnings("always")
     
-        print(img_kp1_list.shape)
-
-        for iter in range(n_max_ransac_iterations):
-            if len(current_max_inliers) > len(feat_matches):
-                break
-            
-            homography_points_inds = random.sample(range(len(img_kp1_list)-1),4)
-
-            homography_points_src = img_kp1_list[homography_points_inds]
-            homography_points_dst = img_kp2_list[homography_points_inds]
-            
-            H = cv2.findHomography(homography_points_src,homography_points_dst)  # TODO: Implement your own
-            X_proj = np.dot(H[0],(X.T))
-            X_proj = np.array([X_proj[0]/X_proj[2],X_proj[1]/X_proj[2]]).T
-
-
-            error = np.sum((img_kp2_list - X_proj)**2,axis=1)
-
-            curr_iter_inliers = np.sum(error < 25)
-            if curr_iter_inliers > np.sum(current_max_inliers):
-                current_max_inliers = (error < 25)
-
-        inlier_src = img_kp1_list[current_max_inliers]
-        inlier_dst = img_kp2_list[current_max_inliers]
-        homography_mats.append(cv2.findHomography(inlier_src, inlier_dst))
-        
-
 
     
     """
