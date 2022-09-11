@@ -7,12 +7,12 @@ import cv2
 import numpy as np
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--train_data_path", type=str, help="Absolute path to training images folder")
+parser.add_argument("--mscoco_data_path", type=str, help="Abs. path to images for synthetic data generation")
 args = parser.parse_args()
 
-TRAIN_DATA_PATH = args.train_data_path
-if not TRAIN_DATA_PATH:
-    TRAIN_DATA_PATH = '/home/radha/WPI/CV/hw1/rrsaraf_p1/Phase2/Data/Train/'
+MSCOCO_DATA_PATH = args.train_data_path
+if not MSCOCO_DATA_PATH:
+    MSCOCO_DATA_PATH = '/home/radha/WPI/CV/hw1/rrsaraf_p1/Phase2/Data/Train/'
 
 
 def generate_data(patch_size: int = 128, perturb_max: int = 32, pixel_buffer_len: int = 150):
@@ -20,18 +20,22 @@ def generate_data(patch_size: int = 128, perturb_max: int = 32, pixel_buffer_len
     Generates synthetic data (original & warped images, homography labels)
     using the approach as described in https://arxiv.org/pdf/1606.03798.pdf
     """
-    # Create new folder to save generated data at
-    save_data_to = "./training_data"
-    if not os.path.exists(save_data_to):
-        os.mkdir(save_data_to)
+    # Create new folders to save generated data at
+    save_orig_data_to = "./Phase2/Data/Raw/Orig/"
+    if not os.path.exists(save_orig_data_to):
+        os.makedirs(save_orig_data_to, exist_ok=True)
+
+    save_warped_data_to = "./Phase2/Data/Raw/Warped/"
+    if not os.path.exists(save_warped_data_to):
+        os.makedirs(save_warped_data_to, exist_ok=True)
 
     stride = int(0.25 * patch_size)
     rho_range = [-perturb_max, perturb_max]
 
-    images = os.listdir(TRAIN_DATA_PATH)
-    img_paths = [TRAIN_DATA_PATH + image for image in images]
+    images = os.listdir(MSCOCO_DATA_PATH)
+    img_paths = [MSCOCO_DATA_PATH + image for image in images]
 
-    with open(os.path.join(save_data_to, 'labels.csv'), 'w') as labels_file:
+    with open(os.path.join('./Phase2/Data', 'labels.csv'), 'w') as labels_file:
         writer = csv.writer(labels_file)
 
         for img_path in img_paths:
@@ -72,10 +76,10 @@ def generate_data(patch_size: int = 128, perturb_max: int = 32, pixel_buffer_len
 
                     image_counter += 1
                     patch_name = f'{img_name}_{image_counter}.jpg'
-                    cv2.imwrite(os.path.join(save_data_to, "orig_" + patch_name), img_crop)
-                    cv2.imwrite(os.path.join(save_data_to + "/warped_" + patch_name), transformed_img_crop)
+                    cv2.imwrite(os.path.join(save_orig_data_to, "orig_" + patch_name), img_crop)
+                    cv2.imwrite(os.path.join(save_warped_data_to + "warped_" + patch_name), transformed_img_crop)
 
-                    writer.writerow([patch_name, list(np.array(perturbations).flatten())])
+                    writer.writerow([f'orig_{patch_name}', list(np.array(perturbations).flatten())])
 
 
 if __name__ == '__main__':
