@@ -34,7 +34,7 @@ import skimage
 import PIL
 import os
 import glob
-import random
+from random import choice
 from skimage import data, exposure, img_as_float
 import matplotlib.pyplot as plt
 import numpy as np
@@ -48,44 +48,46 @@ import string
 from termcolor import colored, cprint
 import math as m
 from tqdm import tqdm
+from typing import Dict, List
 
 
-def GenerateBatch(BasePath, DirNamesTrain, TrainCoordinates, ImageSize, MiniBatchSize):
+def GenerateBatch(BasePath: str = "../Data/", train_images: List, labels: Dict, MiniBatchSize: int) -> torch.stack():
     """
     Inputs:
-    BasePath - Path to COCO folder without "/" at the end
-    DirNamesTrain - Variable with Subfolder paths to train files
+    BasePath - Path to synthetic Data folder
     NOTE that Train can be replaced by Val/Test for generating batch corresponding to validation (held-out testing in this case)/testing
-    TrainCoordinates - Coordinatess corresponding to Train
-    NOTE that TrainCoordinates can be replaced by Val/TestCoordinatess for generating batch corresponding to validation (held-out testing in this case)/testing
+    NOTE that Train labels can be replaced by Val/Test for generating batch corresponding to validation (held-out testing in this case)/testing
     ImageSize - Size of the Image
     MiniBatchSize is the size of the MiniBatch
     Outputs:
-    I1Batch - Batch of images
-    CoordinatesBatch - Batch of coordinates
+    stacked_images_batch - Batch of stacked images
+    h4pt_batch - Batch of homography labels as an h4pt parameterization
     """
-    I1Batch = []
-    CoordinatesBatch = []
+    stacked_images_batch = []
+    h4pt_batch = []
 
-    ImageNum = 0
-    while ImageNum < MiniBatchSize:
-        # Generate random image
-        RandIdx = random.randint(0, len(DirNamesTrain) - 1)
+    img_idx = 0
+    while img_idx < MiniBatchSize:
+        img_idx += 1
 
-        RandImageName = BasePath + os.sep + DirNamesTrain[RandIdx] + ".jpg"
-        ImageNum += 1
+        # Choose a random image
+        random_orig_name = choice(train_images)
+        orig_img_path = os.path.join(BasePath, "Train/Orig", random_orig_name)
+        warped_img_path = os.path.join(BasePath, "Train/Warped", random_orig_name)
 
-        ##########################################################
-        # Add any standardization or data augmentation here!
-        ##########################################################
-        I1 = np.float32(cv2.imread(RandImageName))
-        Coordinates = TrainCoordinates[RandIdx]
+        chan1 = cv2.imread(orig_img_path, cv2.IMREAD_GRAYSCALE)
+        chan2 = cv2.imread(warped_img_path, cv2.IMREAD_GRAYSCALE)
+
+        stacked_image = np.float32(cv2.merge([chan1, chan2]))
+
+        # Get label
+        h4pt = labels[random_orig_name]
 
         # Append All Images and Mask
-        I1Batch.append(torch.from_numpy(I1))
-        CoordinatesBatch.append(torch.tensor(Coordinates))
+        stacked_images_batch.append(torch.from_numpy(stacked_image))
+        h4pt_batch.append(torch.tensor(h4pt))
 
-    return torch.stack(I1Batch), torch.stack(CoordinatesBatch)
+    return torch.stack(stacked_images_batch), torch.stack(h4pt_batch)
 
 
 def PrettyPrint(NumEpochs, DivTrain, MiniBatchSize, NumTrainSamples, LatestFile):
@@ -160,7 +162,7 @@ def TrainOperation(
         NumIterationsPerEpoch = int(NumTrainSamples / MiniBatchSize / DivTrain)
         for PerEpochCounter in tqdm(range(NumIterationsPerEpoch)):
             I1Batch, CoordinatesBatch = GenerateBatch(
-                BasePath, DirNamesTrain, TrainCoordinates, ImageSize, MiniBatchSize
+                BasePath, DirNamesTrain, TrainCoordinates, MiniBatchSize
             )
 
             # Predict output with forward pass
