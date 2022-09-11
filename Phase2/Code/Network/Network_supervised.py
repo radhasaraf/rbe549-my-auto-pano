@@ -15,23 +15,18 @@ import sys
 import torch
 import torch.nn.functional as F
 import pytorch_lightning as pl
-# import kornia  # You can use this to get the transform and warp in this project
 
 # Don't generate pyc codes
 sys.dont_write_bytecode = True
 
 
-def LossFn(delta, img_a, patch_b, corners):
+def LossFn(out, labels):
     ###############################################
     # Fill your loss function of choice here!
+    loss = nn.MSELoss()
+    output = loss(out, labels)
     ###############################################
-
-    ###############################################
-    # You can use kornia to get the transform and warp in this project
-    # Bonus if you implement it yourself
-    ###############################################
-    loss = ...
-    return loss
+    return output
 
 
 class HomographyModel(pl.LightningModule):
@@ -98,27 +93,6 @@ class Net(nn.Module):
         self.fc1 = nn.Linear(16 * 16 * 128, 1024)
         self.fc2 = nn.Linear(1024, 8)
 
-
-        ...
-        #############################
-        # You will need to change the input size and output
-        # size for your Spatial transformer network layer!
-        #############################
-        # Spatial transformer localization-network
-        self.localization = nn.Sequential(
-            nn.Conv2d(1, 8, kernel_size=7),
-            nn.MaxPool2d(2, stride=2),
-            nn.ReLU(True),
-            nn.Conv2d(8, 10, kernel_size=5),
-            nn.MaxPool2d(2, stride=2),
-            nn.ReLU(True),
-        )
-
-        # Regressor for the 3 * 2 affine matrix
-        self.fc_loc = nn.Sequential(
-            nn.Linear(10 * 3 * 3, 32), nn.ReLU(True), nn.Linear(32, 3 * 2)
-        )
-
         # Initialize the weights/bias with identity transformation
         self.fc_loc[2].weight.data.zero_()
         self.fc_loc[2].bias.data.copy_(
@@ -152,7 +126,7 @@ class Net(nn.Module):
         #############################
         # Fill your network structure of choice here!
         #############################
-        x = torch.concat([xa,xb],axis=2)
+        x = torch.concat([xa, xb])
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.maxpool(x)
@@ -164,9 +138,7 @@ class Net(nn.Module):
         x = self.maxpool(x)
         x = self.conv4(x)
         x = self.conv4(x)
+        x = self.dropout(x)
         x = self.fc1(x)
-        x = self.dropout1(x)
         x = self.fc2(x)
-        x = self.dropout2(x)
-
         return x
