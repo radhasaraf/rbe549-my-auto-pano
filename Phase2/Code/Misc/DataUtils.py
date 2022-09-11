@@ -11,6 +11,8 @@ University of Maryland, College Park
 """
 
 import os
+import csv
+import ast
 import cv2
 import numpy as np
 import random
@@ -69,16 +71,15 @@ def SetupAll(BasePath, CheckPointPath):
     )
 
 
-def ReadLabels(LabelsPathTrain):
-    if not (os.path.isfile(LabelsPathTrain)):
-        print("ERROR: Train Labels do not exist in " + LabelsPathTrain)
+def ReadLabels(path_to_csv):
+    if not (os.path.isfile(path_to_csv)):
+        print("ERROR: Train Labels do not exist in " + path_to_csv)
         sys.exit()
     else:
-        TrainLabels = open(LabelsPathTrain, "r")
-        TrainLabels = TrainLabels.read()
-        TrainLabels = list(map(float, TrainLabels.split()))
-
-    return TrainLabels
+        with open(path_to_csv, 'r') as labels_file:
+            reader = csv.reader(labels_file)
+            img_homography_labels = {row[0]: ast.literal_eval(row[1]) for row in reader}
+    return img_homography_labels
 
 
 def SetupDirNames(BasePath):
@@ -88,9 +89,9 @@ def SetupDirNames(BasePath):
     Outputs:
     Writes a file ./TxtFiles/DirNames.txt with full path to all image files without extension
     """
-    DirNamesTrain = ReadDirNames("./TxtFiles/DirNamesTrain.txt")
+    # DirNamesTrain = ReadDirNames("./TxtFiles/DirNamesTrain.txt")
 
-    return DirNamesTrain
+    return os.listdir(BasePath)
 
 
 def ReadDirNames(ReadPath):
