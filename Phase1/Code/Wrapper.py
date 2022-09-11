@@ -27,8 +27,10 @@ from matplotlib import pyplot as plt
 from skimage.feature import corner_peaks,peak_local_max
 from typing import List
 import math
+# D:/conda/envs/CV\lib\site-packages\matplotlib-3.5.3-py3.8-nspkg.pth
 import random
 import warnings
+from shapely.geometry import Point,Polygon
 
 
 # Helper funcs
@@ -259,18 +261,18 @@ def get_feature_matches(img1_descriptor: List[FeatureDescriptor], img2_descripto
 
     return [keypoints1,keypoints2,keypoint_distances]
 
-def draw_feature_matches(keypoints1,keypoints2,keypoints_distances,images_color,first_image_idx,second_image_idx,output_file_extension,output_path,suffix=""):
+def draw_feature_matches(keypoints1,keypoints2,keypoints_distances,first_image,second_image,ref_file_id,to_file_id,output_file_extension,output_path,suffix=""):
     matches = []
     for i,feature_descriptor_dmatch in enumerate(keypoints_distances):
         matches.append(cv2.DMatch(i,i,keypoints_distances[i]))
 
     ret = np.array([])
-    drew_image = cv2.drawMatches(img1=images_color[first_image_idx],
+    drew_image = cv2.drawMatches(img1=first_image,
         keypoints1=keypoints1,
-        img2=images_color[second_image_idx],
+        img2=second_image,
         keypoints2=keypoints2,
         matches1to2=matches,outImg = ret,matchesThickness=1)
-    write_image_output(f"{suffix}feature_matches_",f"{first_image_idx}_{second_image_idx}",output_file_extension,drew_image,output_path)
+    write_image_output(f"{suffix}feature_matches_",f"{ref_file_id}_{to_file_id}",output_file_extension,drew_image,output_path)
 
 def perform_ransac(max_ransac_iters,first_kps,second_kps):
     kps_src = np.array([point.pt for point in first_kps])
@@ -308,57 +310,292 @@ def perform_ransac(max_ransac_iters,first_kps,second_kps):
     
     return max_inliers
 
-def find_homography(first_kps,second_kps,kps_inds):
-    kps_src = np.array([point.pt for point in first_kps])
-    kps_dst = np.array([point.pt for point in second_kps])
+def find_homography(ref_kps,to_kps,kps_inds):
+    kps_src = np.array([point.pt for point in to_kps])
+    kps_dst = np.array([point.pt for point in ref_kps])
     inlier_src = kps_src[kps_inds]
     inlier_dst = kps_dst[kps_inds]
     H = cv2.findHomography(inlier_src,inlier_dst)[0]
     return H
 
+def get_img_coords(img_shape):
+    base_coords = np.array([[0,0,1],[1,0,1],[1,1,1],[0,1,1]],dtype=list).T
+    coords = base_coords.copy()
+    X = coords[0]
+    Y = coords[1]
+    X[:] = X*img_shape[1] # this is because row and column are y and x
+    Y[:] = Y*img_shape[0]
+    return coords
 
-def draw_homographed_img(imgs,img1_idx,img2_idx,H,file_names,output_extn,output_path,display=False):
-    
-    tf_img1 = get_full_homography_img(imgs[img1_idx],H)
-    write_image_output(f"image{img1_idx+1}_{img2_idx+1}_perspective",
-            file_names[img1_idx],
-            output_extn,
-            tf_img1,
-            output_path,display=False)
-    
 
 def get_tf_coords(H,img_shape):
     """
     get output image dimensions for full image after aplying Homography 
     this is needed for warpPerspective function
     """
-    coords = np.array([[0,0,1],[0,1,1],[1,0,1],[1,1,1]],dtype=list).T
-    coords[0] = coords[0][:]*img_shape[1] # this is because row and column are y and x
-    coords[1] = coords[1][:]*img_shape[0]
-    tf_coords = np.dot(H,coords)
+    coords = get_img_coords(img_shape)
+    coords_tf_bb = np.dot(H,coords)
+    Z_new = coords_tf_bb[2]
     try:
-        tf_coords = np.array([tf_coords[0]/tf_coords[2],tf_coords[1]/tf_coords[2]])
+        coords_tf_bb = coords_tf_bb/Z_new
     except RuntimeWarning:
         print("something is wrong")
         return None
     
-    print(f"image coordinates changed from {coords[0:2]} will be {tf_coords}")
-    min_translation = np.ceil(np.min(tf_coords,axis=1)).astype('int')[:,None].T
-    print(f"minimum translation needed {min_translation}")
-    tf_coords_max = np.ceil(np.max(tf_coords,axis=1) - np.min(tf_coords,axis=1)).astype('int')
-    tf_coords_max += 10 #giving a buffer of 10 pixels
-    tf_coords_max = tuple(tf_coords_max)
-    print(f"dim changed from {(img_shape[1],img_shape[0])} to {tf_coords_max}")
-    return [min_translation,tf_coords_max]
+    print(f"image bounding box coordinates changed from {coords[0:2]} will be {coords_tf_bb[0:2]}")
+    translation_vec = -np.floor(
+                        np.min(coords_tf_bb,
+                            axis=1,
+                            initial=0,    
+                            where=coords_tf_bb<0,
+                            keepdims=True)).astype('int')
+
+    print(f"minimum translation needed {translation_vec.T}")
+
+    translation_mat = np.identity(3)
+    translation_mat[0:3,2] = translation_vec.T[0]
+
+    new_image_bb_coords = np.dot(translation_mat,coords_tf_bb)
+
+    print(f"image bounding box coordinates after translating {new_image_bb_coords}")
+    new_image_shape = np.ceil(np.max(new_image_bb_coords, axis=1)).astype('int')[0:2]
+    
+    new_image_coords = get_img_coords(new_image_shape)
+
+    print(f"image shape coordinates changed from {coords[0:2]} will be {new_image_coords[0:2]}")
+    
+    return [translation_vec,new_image_shape,new_image_bb_coords]
 
 def get_full_homography_img(img,H):
     img_shape = img.shape
-    [min_translation,tf_coords] = get_tf_coords(H,img_shape)
+    [translation_vec,new_image_shape,new_image_bb_coords] = get_tf_coords(H,img_shape)
+    print(new_image_shape)
     translation_mat = np.zeros_like(H)
-    translation_mat[0:2,2] = -min_translation
+    translation_mat[0:3,2] = translation_vec.T[0]
     tf_homograph_mat = H + translation_mat
-    tf_img = cv2.warpPerspective(img,tf_homograph_mat,tf_coords) 
-    return tf_img
+
+    tf_img = cv2.warpPerspective(img,tf_homograph_mat,[new_image_shape[1],new_image_shape[0]]) 
+    return tf_img,translation_vec,new_image_shape,new_image_bb_coords
+
+def affine_and_resize_image(image,translation_vec,new_shape):
+    affine_mat = np.zeros(shape=(2,3))
+    affine_mat[0,0] = 1
+    affine_mat[1,1] = 1
+    affine_mat[0:2,2] = translation_vec.T[0,0:2]
+
+    coords = get_img_coords(image.shape)
+
+    new_bb_coords = np.dot(affine_mat,coords)
+    
+    tf_ref_img = cv2.warpAffine(image,affine_mat,[new_shape[1],new_shape[0]])
+    return tf_ref_img,new_bb_coords
+
+def stitch_images(ref_image,to_image,Args,ref_file_id,to_file_id):
+    ch_block_size = Args.CornerHarrisBlockSize
+    ch_ksize = Args.CornerHarrisSobelOpSize
+    ch_k = Args.CornerHarrisKParameter
+    n_max_ransac_iterations = Args.RansacMaxIterations
+    local_maxima_stddev_threshold_factor = Args.StdDevThresholdFactorForLocalMaxima
+    base_path = Args.BasePath
+    img_set = Args.TestSet
+    input_file_extension = '.jpg'
+    output_file_extension = '.png'
+    out_path = base_path + img_set
+
+    ref_img_gray = cv2.cvtColor(ref_image,cv2.COLOR_BGR2GRAY)
+    to_img_gray = cv2.cvtColor(to_image,cv2.COLOR_BGR2GRAY)
+    
+
+    """
+    Corner Detection
+    Save Corner detection output as corners.png
+    """
+    (ref_img_corners,reF_corner_count,ref_stddev) = get_corners(ref_img_gray,
+                                ch_block_size,
+                                ch_ksize,
+                                ch_k,
+                                ref_file_id,
+                                output_file_extension,
+                                out_path)
+
+    (to_img_corners,to_corner_count,to_stddev) = get_corners(to_img_gray,
+                                ch_block_size,
+                                ch_ksize,
+                                ch_k,
+                                to_file_id,
+                                output_file_extension,
+                                out_path)
+   
+
+    """
+    local maxima
+    """
+    min_stddev = None
+    if ref_stddev < to_stddev:
+        min_stddev = ref_stddev
+    else:
+        min_stddev = to_stddev
+
+    ref_local_max_corners,ref_local_max_corners_coords = apply_corners_local_maxima(
+                                ref_img_corners,
+                                min_stddev,
+                                local_maxima_stddev_threshold_factor,
+                                ref_file_id,
+                                output_file_extension,
+                                out_path)
+    draw_markers("embed_max_corners",
+                ref_image,
+                ref_local_max_corners_coords,
+                color=[0,255,0],
+                file_name=ref_file_id,
+                output_file_extension=output_file_extension,
+                path=out_path,
+                display=False)
+
+    
+    to_local_max_corners,to_local_max_corners_coords = apply_corners_local_maxima(
+                                to_img_corners,
+                                min_stddev,
+                                local_maxima_stddev_threshold_factor,
+                                to_file_id,
+                                output_file_extension,
+                                out_path)
+    draw_markers("embed_max_corners",
+                to_image,
+                to_local_max_corners_coords,
+                color=[0,255,0],
+                file_name=to_file_id,
+                output_file_extension=output_file_extension,
+                path=out_path,
+                display=False)
+
+    """
+    Perform ANMS: Adaptive Non-Maximal Suppression
+    Save ANMS output as anms.png
+    """
+    ref_anms_coords = apply_anms_to_img(ref_local_max_corners_coords,
+                                ref_local_max_corners,
+                                200)
+
+    draw_markers("anms_corners",
+            ref_image,
+            ref_anms_coords,
+            color=[0,255,0],
+            file_name=ref_file_id,
+            output_file_extension=output_file_extension,
+            path=out_path,
+            display=False)
+
+
+    to_anms_coords = apply_anms_to_img(to_local_max_corners_coords,
+                                to_local_max_corners,
+                                200)
+    
+    draw_markers("anms_corners",
+            to_image,
+            to_anms_coords,
+            color=[0,255,0],
+            file_name=to_file_id,
+            output_file_extension=output_file_extension,
+            path=out_path,
+            display=False)
+   
+    """
+    Feature Descriptors
+    Save Feature Descriptor output as FD.png
+    """
+    ref_fds = get_corner_descriptors(ref_img_gray, ref_anms_coords)
+    to_fds = get_corner_descriptors(to_img_gray, to_anms_coords)
+
+    """
+    Feature Matching
+    Save Feature Matching output as matching.png
+    """
+    (ref_kps,to_kps,kps_dists) = get_feature_matches(ref_fds,to_fds)
+    """
+    Below portion of the code is to draw image correlations
+    """
+    draw_feature_matches(ref_kps,
+            to_kps,
+            kps_dists,
+            ref_image,
+            to_image,
+            ref_file_id,
+            to_file_id,
+            output_file_extension,
+            out_path)
+    """
+    Refine: RANSAC, Estimate Homography
+    """
+    warnings.filterwarnings("error")
+    max_inliers = perform_ransac(n_max_ransac_iterations, ref_kps, to_kps)
+    warnings.filterwarnings("always")
+
+    """
+    show output of ransac homography
+    """
+    draw_feature_matches(ref_kps[max_inliers],
+                to_kps[max_inliers],
+                kps_dists[max_inliers],
+                ref_image,
+                to_image,
+                ref_file_id,
+                to_file_id,
+                output_file_extension,
+                out_path)
+    
+    H = find_homography(ref_kps,to_kps,max_inliers)
+
+
+    """
+    Image Warping + Blending
+    Save Panorama output as mypano.png
+    """
+
+    tf_to_img,translation_vec,new_image_shape,tf_to_bb_coords = get_full_homography_img(to_image,H)
+    write_image_output(f"image{ref_file_id}_{to_file_id}_perspective",
+            to_file_id,
+            output_file_extension,
+            tf_to_img,
+            out_path,
+            display=False)
+    
+    tf_ref_img,tf_ref_bb_coords = affine_and_resize_image(ref_image,translation_vec,new_image_shape)
+    write_image_output(f"image{ref_file_id}_affined_{to_file_id}",
+            ref_file_id,
+            output_file_extension,
+            tf_ref_img,
+            out_path,
+            display=False)
+
+    stitch_img = tf_to_img + tf_ref_img
+
+    write_image_output(f"image{ref_file_id}{to_file_id}_stitch",
+            to_file_id,
+            output_file_extension,
+            stitch_img,
+            out_path,
+            display=False)
+
+    print(f"to {tf_to_bb_coords[0:2].T}")
+    print(f"ref {tf_ref_bb_coords[0:2].T}")
+
+    poly1 = Polygon(map(Point, tf_to_bb_coords[0:2].T))
+    poly2 = Polygon(map(Point, tf_ref_bb_coords[0:2].T))
+    intersected_poly = poly1.intersection(poly2)
+    
+    for i in range(stitch_img.shape[0]):
+        for j in range(stitch_img.shape[1]):
+            if intersected_poly.contains(Point(j,i)):
+                stitch_img[i,j] = tf_to_img[i,j]
+    
+    write_image_output(f"image{ref_file_id}{to_file_id}_clear_stitch",
+        to_file_id,
+        output_file_extension,
+        stitch_img,
+        out_path,
+        display=False)
+    return    
 
 def main():
     # Add any Command Line arguments here
@@ -372,15 +609,9 @@ def main():
     Parser.add_argument('--RansacMaxIterations',default=10000,help='Maximum number of iterations a RANSAC algorithm should run, Default:10000')
 
     Args = Parser.parse_args()
-    ch_block_size = Args.CornerHarrisBlockSize
-    ch_ksize = Args.CornerHarrisSobelOpSize
-    ch_k = Args.CornerHarrisKParameter
-    n_max_ransac_iterations = Args.RansacMaxIterations
-    local_maxima_stddev_threshold_factor = Args.StdDevThresholdFactorForLocalMaxima
     base_path = Args.BasePath
     img_set = Args.TestSet
     input_file_extension = '.jpg'
-    output_file_extension = '.png'
     
     """
     Read a set of images for Panorama stitching
@@ -392,148 +623,19 @@ def main():
     print("List of files to read:",files)
     file_names = [file.replace(base_path+img_set,'').replace(input_file_extension,'') for file in files]
     images_color = []
-    images_gray = []
     for image_file in files:
         img_color_orig = cv2.imread(image_file)
-        img_gray = cv2.cvtColor(img_color_orig,cv2.COLOR_BGR2GRAY)
         images_color.append(img_color_orig)
-        images_gray.append(img_gray)
 
     images_color = np.array(images_color)
     print(images_color.shape)
-    # make_subplots(len(files),images_color)
+    ref_image = images_color[0]
+    ref_file_id = file_names[0]
 
-    """
-    Corner Detection
-    Save Corner detection output as corners.png
-    """
-    corners_of_images = []
-    n_harris_corners_images = []
-    min_stddev = None
-    for i,file in enumerate(files):
-        (img_corners,corner_count,stddev) = get_corners(images_gray[i],ch_block_size,ch_ksize,ch_k,file_names[i],output_file_extension,base_path+img_set)
-        if min_stddev is not None and stddev < min_stddev:
-            min_stddev = stddev
-        else:
-            min_stddev = stddev
-        corners_of_images.append(img_corners)
-        n_harris_corners_images.append(corner_count)
-    print(f"minimum standard deviation:{min_stddev}")
-    
-
-    """
-    local maxima
-    """
-    local_max_corners_of_images = []
-    local_max_corners_coords_of_images = []
-    for i,file in enumerate(files):
-        (corner_image,corner_image_coords) = apply_corners_local_maxima(corners_of_images[i],
-                min_stddev,
-                local_maxima_stddev_threshold_factor,
-                file_names[i],
-                output_file_extension,
-                base_path + img_set)
-        local_max_corners_of_images.append(corner_image)
-        local_max_corners_coords_of_images.append(corner_image_coords)
-
-    local_max_corners_of_images = np.array(local_max_corners_of_images)
-    local_max_corners_coords_of_images = np.array(local_max_corners_coords_of_images,dtype=list)
-    
-    for i,file in enumerate(files):
-        draw_markers("embed_max_corners",images_color[i],local_max_corners_coords_of_images[i],color=[0,255,0],file_name=file_names[i],output_file_extension=output_file_extension,path=base_path+img_set,display=False)
-
-
-    """
-    Perform ANMS: Adaptive Non-Maximal Suppression
-    Save ANMS output as anms.png
-    """
-    anms_coords_of_images = []
-    for i,file in enumerate(files):
-        anms_coords_of_images.append(apply_anms_to_img(local_max_corners_coords_of_images[i],local_max_corners_of_images[i],200))
-
-    anms_coords_of_images = np.array(anms_coords_of_images,dtype=np.ndarray)
-    for i,file in enumerate(files):
-        draw_markers("anms_corners",images_color[i],anms_coords_of_images[i],color=[0,255,0],file_name=file_names[i],output_file_extension=output_file_extension,path=base_path+img_set,display=False)
-
-    """
-    Feature Descriptors
-    Save Feature Descriptor output as FD.png
-    """
-    images_corner_descriptors = []
-    for i,file in enumerate(files):
-        images_corner_descriptors.append([get_corner_descriptors(images_gray[i],anms_coords_of_images[i])])
-    
-    draw_random_corner_patch(images_corner_descriptors,file_names,output_file_extension,base_path+img_set)
-   
-
-    """
-    Feature Matching
-    Save Feature Matching output as matching.png
-    """
-    images_feature_matches = []
-    for first_image_idx, file in enumerate(files): # TODO run for all p an c
-        for second_image_idx in range(first_image_idx+1,len(files)):
-            (img1_keypoints,img2_keypoints,img12_keypoints_distances) = get_feature_matches(images_corner_descriptors[first_image_idx][0],images_corner_descriptors[second_image_idx][0])
-            images_feature_matches.append([
-                        first_image_idx,
-                        second_image_idx,
-                        img1_keypoints,
-                        img2_keypoints,
-                        img12_keypoints_distances
-                    ])
-            
-            """
-            Below portion of the code is to draw image correlations
-            """
-            draw_feature_matches(img1_keypoints,
-                    img2_keypoints,
-                    img12_keypoints_distances,
-                    images_color,
-                    first_image_idx,
-                    second_image_idx,
-                    output_file_extension,
-                    base_path+img_set)
-    
-    """
-    Refine: RANSAC, Estimate Homography
-    """
-    warnings.filterwarnings("error")
-    imgs_inliers_list = []
-    homography_mats = np.empty(shape=(len(images_feature_matches),3,3))
-    for i,(img1_idx,img2_idx,first_image_keypoints,second_image_keypoints,keypoints_distances) in enumerate(images_feature_matches):
-        
-        
-        max_inliers = perform_ransac(n_max_ransac_iterations,
-            first_image_keypoints,
-            second_image_keypoints)
-        
-        imgs_inliers_list.append(max_inliers)
-       
-        """
-        show output of ransac homography
-        """
-        draw_feature_matches(first_image_keypoints[max_inliers],
-                    second_image_keypoints[max_inliers],
-                    keypoints_distances[max_inliers],
-                    images_color,
-                    img1_idx,
-                    img2_idx,
-                    output_file_extension,
-                    base_path+img_set,
-                    "ransac_")
-
-
-        homography_mats[i] = find_homography(first_image_keypoints,second_image_keypoints,max_inliers)
-        draw_homographed_img(images_color,img1_idx,img2_idx,homography_mats[i],file_names,output_file_extension,base_path+img_set)
-        # break
-    warnings.filterwarnings("always")
-    
-
-    
-    """
-    Image Warping + Blending
-    Save Panorama output as mypano.png
-    """
+    stitch_images(ref_image,images_color[1],Args,"1",file_names[1])
+    # for i in range(1,len(files)):
+    #     stitch_image(ref_image,images_color[i],Args,file_names[i])
+    return
 
 
 if __name__ == "__main__":
