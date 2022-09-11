@@ -82,5 +82,79 @@ def generate_data(patch_size: int = 128, perturb_max: int = 32, pixel_buffer_len
                     writer.writerow([f'orig_{patch_name}', list(np.array(perturbations).flatten())])
 
 
+def organize_shuffle_split_data(path_to_data: str):
+    """
+    Note: Assumes 'path_to_data' contains 'Raw' image folder.
+
+    Takes the generated data, shuffles it, splits and organises into Train(75%), Test(15%) &
+    Validation(10%) sets
+    """
+    from shutil import move
+    from sklearn.model_selection import train_test_split
+
+    # Alternate approach to get imagefile names
+    # file_list = []
+    # with open(csv_file_path, 'r') as file:
+    #     reader = csv.reader(file)
+    #     file_list = [row[0] for row in reader]
+
+    orig_data_path = os.path.join(path_to_data, 'Raw/Orig/')
+    warped_data_path = os.path.join(path_to_data, 'Raw/Warped/')
+
+    os.makedirs(path_to_data + "/Train/Orig/")
+    os.makedirs(path_to_data + "/Train/Warped/")
+    os.makedirs(path_to_data + "/Test/Orig/")
+    os.makedirs(path_to_data + "/Test/Warped/")
+    os.makedirs(path_to_data + "/Val/Orig/")
+    os.makedirs(path_to_data + "/Val/Warped/")
+
+    orig_file_names = os.listdir(orig_data_path)
+    train, test = train_test_split(orig_file_names, test_size=0.25, random_state=45)
+    test, val = train_test_split(test, test_size=0.4, random_state=45)
+
+    for orig_name in train:
+        raw_name = orig_name[5:]  # raw_name for 'orig_2600_13.jpg' is '2600_13.jpg'
+        warped_name = "warped_" + raw_name
+
+        # Move train images into respective folders
+        move(
+            os.path.join(orig_data_path, orig_name),
+            os.path.join(path_to_data + f"/Train/Orig/{raw_name}")
+        )
+        move(
+            os.path.join(warped_data_path, warped_name),
+            os.path.join(path_to_data + f"/Train/Warped/{raw_name}")
+        )
+
+    for orig_name in test:
+        raw_name = orig_name[5:]  # raw_name for 'orig_2600_13.jpg' is '2600_13.jpg'
+        warped_name = "warped_" + raw_name
+
+        # Move train images into respective folders
+        move(
+            os.path.join(orig_data_path, orig_name),
+            os.path.join(path_to_data + f"/Test/Orig/{raw_name}")
+        )
+        move(
+            os.path.join(warped_data_path, warped_name),
+            os.path.join(path_to_data + f"/Test/Warped/{raw_name}")
+        )
+
+    for orig_name in val:
+        raw_name = orig_name[5:]  # raw_name for 'orig_2600_13.jpg' is '2600_13.jpg'
+        warped_name = "warped_" + raw_name
+
+        # Move train images into respective folders
+        move(
+            os.path.join(orig_data_path, orig_name),
+            os.path.join(path_to_data + f"/Val/Orig/{raw_name}")
+        )
+        move(
+            os.path.join(warped_data_path, warped_name),
+            os.path.join(path_to_data + f"/Val/Warped/{raw_name}")
+        )
+
+
 if __name__ == '__main__':
     generate_data()
+    organize_shuffle_split_data("/home/radha/WPI/CV/rbe549-my-auto-pano/Phase2/Data")
