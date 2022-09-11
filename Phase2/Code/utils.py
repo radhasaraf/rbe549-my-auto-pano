@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--mscoco_data_path", type=str, help="Abs. path to images for synthetic data generation")
 args = parser.parse_args()
 
-MSCOCO_DATA_PATH = args.train_data_path
+MSCOCO_DATA_PATH = args.mscoco_data_path
 if not MSCOCO_DATA_PATH:
     MSCOCO_DATA_PATH = '/home/radha/WPI/CV/hw1/rrsaraf_p1/Phase2/Data/Train/'
 
@@ -21,11 +21,11 @@ def generate_data(patch_size: int = 128, perturb_max: int = 32, pixel_buffer_len
     using the approach as described in https://arxiv.org/pdf/1606.03798.pdf
     """
     # Create new folders to save generated data at
-    save_orig_data_to = "./Phase2/Data/Raw/Orig/"
+    save_orig_data_to = "../Data/Raw/Orig/"
     if not os.path.exists(save_orig_data_to):
         os.makedirs(save_orig_data_to, exist_ok=True)
 
-    save_warped_data_to = "./Phase2/Data/Raw/Warped/"
+    save_warped_data_to = "../Data/Raw/Warped/"
     if not os.path.exists(save_warped_data_to):
         os.makedirs(save_warped_data_to, exist_ok=True)
 
@@ -35,7 +35,7 @@ def generate_data(patch_size: int = 128, perturb_max: int = 32, pixel_buffer_len
     images = os.listdir(MSCOCO_DATA_PATH)
     img_paths = [MSCOCO_DATA_PATH + image for image in images]
 
-    with open(os.path.join('./Phase2/Data', 'labels.csv'), 'w') as labels_file:
+    with open(os.path.join('../Data', 'labels.csv'), 'w') as labels_file:
         writer = csv.writer(labels_file)
 
         for img_path in img_paths:
@@ -79,7 +79,7 @@ def generate_data(patch_size: int = 128, perturb_max: int = 32, pixel_buffer_len
                     cv2.imwrite(os.path.join(save_orig_data_to, "orig_" + patch_name), img_crop)
                     cv2.imwrite(os.path.join(save_warped_data_to + "warped_" + patch_name), transformed_img_crop)
 
-                    writer.writerow([f'orig_{patch_name}', list(np.array(perturbations).flatten())])
+                    writer.writerow([patch_name, list(np.array(perturbations).flatten())])
 
 
 def organize_shuffle_split_data(path_to_data: str):
