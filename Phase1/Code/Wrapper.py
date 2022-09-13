@@ -327,6 +327,16 @@ def get_img_coords(img_shape):
     Y[:] = Y*img_shape[0]
     return coords
 
+def get_translated_img_bb_coords(coords,translation_vector,old_shape):
+    translation_mat = np.identity(3)
+    translation_mat[0:3,2] = translation_vector.T[0]
+    new_img_bb_coords = np.dot(translation_mat,coords)
+    new_image_shape = np.ceil(np.max(new_img_bb_coords, axis=1)).astype('int')[0:2]
+    
+    new_image_shape[0],new_image_shape[1] = new_image_shape[1],new_image_shape[0]
+
+    print(f"After translation: image shape: \n {old_shape} --> {new_image_shape} \n bounding box coordinates: \n {new_img_bb_coords}")
+    return new_img_bb_coords,new_image_shape
 
 def get_tf_coords(H,img_shape):
     """
@@ -342,7 +352,7 @@ def get_tf_coords(H,img_shape):
         print("something is wrong")
         return None
     
-    print(f"image bounding box coordinates changed from {coords[0:2]} will be {coords_tf_bb[0:2]}")
+    print(f"image bounding box coordinates changed from \n {coords[0:2]} \n to: \n {coords_tf_bb[0:2]}")
     translation_vec = -np.floor(
                         np.min(coords_tf_bb,
                             axis=1,
@@ -355,21 +365,17 @@ def get_tf_coords(H,img_shape):
     translation_mat = np.identity(3)
     translation_mat[0:3,2] = translation_vec.T[0]
 
-    new_image_bb_coords = np.dot(translation_mat,coords_tf_bb)
-
-    print(f"image bounding box coordinates after translating {new_image_bb_coords}")
-    new_image_shape = np.ceil(np.max(new_image_bb_coords, axis=1)).astype('int')[0:2]
+    new_image_bb_coords,new_image_shape = get_translated_img_bb_coords(coords_tf_bb,translation_vec,img_shape)
     
     new_image_coords = get_img_coords(new_image_shape)
 
-    print(f"image shape coordinates changed from {coords[0:2]} will be {new_image_coords[0:2]}")
+    print(f"image shape coordinates changed from \n {coords[0:2]} \n to \n {new_image_coords[0:2]}")
     
     return [translation_vec,new_image_shape,new_image_bb_coords]
 
 def get_full_homography_img(img,H):
     img_shape = img.shape
     [translation_vec,new_image_shape,new_image_bb_coords] = get_tf_coords(H,img_shape)
-    print(new_image_shape)
     translation_mat = np.zeros_like(H)
     translation_mat[0:3,2] = translation_vec.T[0]
     tf_homograph_mat = H + translation_mat
@@ -385,10 +391,14 @@ def affine_and_resize_image(image,translation_vec,new_shape):
 
     coords = get_img_coords(image.shape)
 
-    new_bb_coords = np.dot(affine_mat,coords)
+    new_bb_coords,tf_shape = get_translated_img_bb_coords(coords,translation_vec,image.shape)
+
+    final_canvas_shape = np.array([max(new_shape[0],tf_shape[0]),max(new_shape[1],tf_shape[1])])
+    print(f"final canvase shape {new_shape},{tf_shape} --> {final_canvas_shape}")
+
     
-    tf_ref_img = cv2.warpAffine(image,affine_mat,[new_shape[1],new_shape[0]])
-    return tf_ref_img,new_bb_coords
+    tf_ref_img = cv2.warpAffine(image,affine_mat,[final_canvas_shape[1],final_canvas_shape[0]])
+    return tf_ref_img,new_bb_coords,final_canvas_shape
 
 def stitch_images(ref_image,to_image,Args,ref_file_id,to_file_id):
     ch_block_size = Args.CornerHarrisBlockSize
@@ -552,7 +562,7 @@ def stitch_images(ref_image,to_image,Args,ref_file_id,to_file_id):
     Save Panorama output as mypano.png
     """
 
-    tf_to_img,translation_vec,new_image_shape,tf_to_bb_coords = get_full_homography_img(to_image,H)
+    tf_to_img,translation_vec,final_to_img_shape,tf_to_bb_coords = get_full_homography_img(to_image,H)
     write_image_output(f"image{ref_file_id}_{to_file_id}_perspective",
             to_file_id,
             output_file_extension,
@@ -560,7 +570,7 @@ def stitch_images(ref_image,to_image,Args,ref_file_id,to_file_id):
             out_path,
             display=False)
     
-    tf_ref_img,tf_ref_bb_coords = affine_and_resize_image(ref_image,translation_vec,new_image_shape)
+    tf_ref_img,tf_ref_bb_coords,final_canvas_shape = affine_and_resize_image(ref_image,translation_vec,final_to_img_shape)
     write_image_output(f"image{ref_file_id}_affined_{to_file_id}",
             ref_file_id,
             output_file_extension,
@@ -568,8 +578,11 @@ def stitch_images(ref_image,to_image,Args,ref_file_id,to_file_id):
             out_path,
             display=False)
 
-    stitch_img = tf_to_img + tf_ref_img
-
+    stitch_img = np.zeros(shape=(final_canvas_shape[0],final_canvas_shape[1],3))
+    stitch_img[0:final_to_img_shape[0],0:final_to_img_shape[1],:] = tf_to_img
+    stitch_img = tf_ref_img
+    print(stitch_img.shape)
+    print(tf_to_img.shape)
     write_image_output(f"image{ref_file_id}{to_file_id}_stitch",
             to_file_id,
             output_file_extension,
@@ -586,7 +599,7 @@ def stitch_images(ref_image,to_image,Args,ref_file_id,to_file_id):
     
     for i in range(stitch_img.shape[0]):
         for j in range(stitch_img.shape[1]):
-            if intersected_poly.contains(Point(j,i)):
+            if poly1.contains(Point(j,i)):
                 stitch_img[i,j] = tf_to_img[i,j]
     
     write_image_output(f"image{ref_file_id}{to_file_id}_clear_stitch",
@@ -595,7 +608,7 @@ def stitch_images(ref_image,to_image,Args,ref_file_id,to_file_id):
         stitch_img,
         out_path,
         display=False)
-    return    
+    return stitch_img,f"{ref_file_id}{to_file_id}"
 
 def main():
     # Add any Command Line arguments here
@@ -632,9 +645,10 @@ def main():
     ref_image = images_color[0]
     ref_file_id = file_names[0]
 
-    stitch_images(ref_image,images_color[1],Args,"1",file_names[1])
-    # for i in range(1,len(files)):
-    #     stitch_image(ref_image,images_color[i],Args,file_names[i])
+    # stitch_images(ref_image,images_color[1],Args,"1",file_names[1])
+    # return
+    for i in range(1,len(files)):
+        ref_image,ref_file_id = stitch_images(ref_image,images_color[i],Args,ref_file_id,file_names[i])
     return
 
 
