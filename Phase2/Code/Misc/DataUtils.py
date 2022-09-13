@@ -39,7 +39,7 @@ def SetupAll(BasePath, CheckPointPath):
     NumClasses - Number of classes
     """
     # Setup DirNames
-    DirNamesTrain = SetupDirNames(os.path.join(BasePath, "Train/Orig/"))
+    DirNamesTrain = SetupDirNames(os.path.join(BasePath, "Raw/Orig/"))
 
     # Read and Setup Labels
     LabelsPathTrain = os.path.join('../Data/labels.csv')
