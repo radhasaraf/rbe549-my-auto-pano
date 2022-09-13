@@ -71,8 +71,10 @@ def generate_data(patch_size: int = 128, perturb_max: int = 32, pixel_buffer_len
                     transformed_img = cv2.warpPerspective(img_gray, np.linalg.inv(h), img_gray.shape, flags=cv2.INTER_LINEAR)
 
                     # Get the corresponding original & perturbed patches
-                    img_crop = img_gray[j: j + patch_size, i: i + patch_size]
-                    transformed_img_crop = transformed_img[j: j + patch_size, i: i + patch_size]
+                    img_crop = img_gray[i: i + patch_size, j: j + patch_size]
+                    transformed_img_crop = transformed_img[i: i + patch_size, j: j + patch_size]
+                    if transformed_img_crop.shape != (128, 128):
+                        continue
 
                     image_counter += 1
                     patch_name = f'{img_name}_{image_counter}.jpg'

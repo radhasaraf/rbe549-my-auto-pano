@@ -22,9 +22,8 @@ import torch
 import torchvision
 from torch.utils.tensorboard import SummaryWriter
 from torchvision import datasets, transforms
-from torch.optim import AdamW
-from Network.Network import HomographyModel
-from Network.Network_supervised import LossFn
+from torch.optim import Adam
+from Network.Network_supervised import HomographyModel, LossFn
 import cv2
 import sys
 import os
@@ -51,7 +50,7 @@ from tqdm import tqdm
 from typing import Dict, List
 
 
-def GenerateBatch(BasePath: str = "../Data/", train_images: List, labels: Dict, MiniBatchSize: int) -> torch.stack():
+def GenerateBatch(BasePath: str, train_images: List, labels: Dict, MiniBatchSize: int):
     """
     Inputs:
     BasePath - Path to synthetic Data folder
@@ -106,7 +105,6 @@ def TrainOperation(
     DirNamesTrain,
     TrainCoordinates,
     NumTrainSamples,
-    ImageSize,
     NumEpochs,
     MiniBatchSize,
     SaveCheckPoint,
@@ -123,7 +121,6 @@ def TrainOperation(
     DirNamesTrain - Variable with Subfolder paths to train files
     TrainCoordinates - Coordinates corresponding to Train/Test
     NumTrainSamples - length(Train)
-    ImageSize - Size of the image
     NumEpochs - Number of passes through the Train data
     MiniBatchSize is the size of the MiniBatch
     SaveCheckPoint - Save checkpoint every SaveCheckPoint iteration in every epoch, checkpoint saved automatically after every epoch
@@ -139,10 +136,7 @@ def TrainOperation(
     # Predict output with forward pass
     model = HomographyModel()
 
-    ###############################################
-    # Fill your optimizer of choice here!
-    ###############################################
-    Optimizer = ...
+    Optimizer = Adam(model.parameters(), lr=0.005)
 
     # Tensorboard
     # Create a summary to monitor loss tensor
@@ -184,6 +178,17 @@ def TrainOperation(
                     + "model.ckpt"
                 )
 
+                result = model.validation_step(I1Batch, CoordinatesBatch)
+
+                # Tensorboard
+                Writer.add_scalar(
+                    "LossEveryIter",
+                    result["val_loss"],
+                    Epochs * NumIterationsPerEpoch + PerEpochCounter,
+                )
+                # If you don't flush the tensorboard doesn't update until a lot of iterations!
+                Writer.flush()
+
                 torch.save(
                     {
                         "epoch": Epochs,
@@ -195,28 +200,34 @@ def TrainOperation(
                 )
                 print("\n" + SaveName + " Model Saved...")
 
-            result = model.validation_step(Batch)
-            # Tensorboard
-            Writer.add_scalar(
-                "LossEveryIter",
-                result["val_loss"],
-                Epochs * NumIterationsPerEpoch + PerEpochCounter,
-            )
-            # If you don't flush the tensorboard doesn't update until a lot of iterations!
-            Writer.flush()
+
+            # val_batch, val_labels = GenerateBatch(
+            #     BasePath, DirNamesTrain, TrainCoordinates, MiniBatchSize
+            # )
+
+            # result = model.validation_step(I1Batch, CoordinatesBatch)
+            #
+            # # Tensorboard
+            # Writer.add_scalar(
+            #     "LossEveryIter",
+            #     result["val_loss"],
+            #     Epochs * NumIterationsPerEpoch + PerEpochCounter,
+            # )
+            # # If you don't flush the tensorboard doesn't update until a lot of iterations!
+            # Writer.flush()
 
         # Save model every epoch
-        SaveName = CheckPointPath + str(Epochs) + "model.ckpt"
-        torch.save(
-            {
-                "epoch": Epochs,
-                "model_state_dict": model.state_dict(),
-                "optimizer_state_dict": Optimizer.state_dict(),
-                "loss": LossThisBatch,
-            },
-            SaveName,
-        )
-        print("\n" + SaveName + " Model Saved...")
+        # SaveName = CheckPointPath + str(Epochs) + "model.ckpt"
+        # torch.save(
+        #     {
+        #         "epoch": Epochs,
+        #         "model_state_dict": model.state_dict(),
+        #         "optimizer_state_dict": Optimizer.state_dict(),
+        #         "loss": LossThisBatch,
+        #     },
+        #     SaveName,
+        # )
+        # print("\n" + SaveName + " Model Saved...")
 
 
 def main():
@@ -230,7 +241,7 @@ def main():
     Parser = argparse.ArgumentParser()
     Parser.add_argument(
         "--BasePath",
-        default="/home/lening/workspace/rbe549/YourDirectoryID_p1/Phase2/Data",
+        default='../Data/',
         help="Base path of images, Default:/home/lening/workspace/rbe549/YourDirectoryID_p1/Phase2/Data",
     )
     Parser.add_argument(
@@ -247,7 +258,7 @@ def main():
     Parser.add_argument(
         "--NumEpochs",
         type=int,
-        default=50,
+        default=5,
         help="Number of Epochs to Train for, Default:50",
     )
     Parser.add_argument(
@@ -259,7 +270,7 @@ def main():
     Parser.add_argument(
         "--MiniBatchSize",
         type=int,
-        default=1,
+        default=5,
         help="Size of the MiniBatch to use, Default:1",
     )
     Parser.add_argument(
@@ -307,7 +318,6 @@ def main():
         DirNamesTrain,
         TrainCoordinates,
         NumTrainSamples,
-        ImageSize,
         NumEpochs,
         MiniBatchSize,
         SaveCheckPoint,
