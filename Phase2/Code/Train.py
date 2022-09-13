@@ -50,6 +50,13 @@ from tqdm import tqdm
 from typing import Dict, List
 
 
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+else:
+    device = torch.device("cpu")
+print(f"Running on device: {device}")
+
+
 def GenerateBatch(BasePath: str, train_images: List, labels: Dict, MiniBatchSize: int):
     """
     Inputs:
@@ -86,7 +93,7 @@ def GenerateBatch(BasePath: str, train_images: List, labels: Dict, MiniBatchSize
         stacked_images_batch.append(torch.from_numpy(stacked_image))
         h4pt_batch.append(torch.tensor(h4pt))
 
-    return torch.stack(stacked_images_batch), torch.stack(h4pt_batch)
+    return torch.stack(stacked_images_batch).to(device), torch.stack(h4pt_batch).to(device)
 
 
 def PrettyPrint(NumEpochs, DivTrain, MiniBatchSize, NumTrainSamples, LatestFile):
@@ -134,7 +141,7 @@ def TrainOperation(
     Saves Trained network in CheckPointPath and Logs to LogsPath
     """
     # Predict output with forward pass
-    model = HomographyModel()
+    model = HomographyModel().to(device)
 
     Optimizer = Adam(model.parameters(), lr=0.005)
 
