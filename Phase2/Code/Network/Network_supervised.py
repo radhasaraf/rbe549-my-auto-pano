@@ -28,7 +28,7 @@ def LossFn(out, labels):
     return loss
 
 
-class HomographyModel():
+class HomographyModel(pl.LightningModule):
     def __init__(self):
         super(HomographyModel, self).__init__()
         self.model = Net()
@@ -42,10 +42,12 @@ class HomographyModel():
         print("Validation loss", loss)
         return {"val_loss": loss}
 
-    def validation_epoch_end(self, outputs):
+    @staticmethod
+    def validation_epoch_end(outputs):
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
         logs = {"val_loss": avg_loss}
         return {"avg_val_loss": avg_loss, "log": logs}
+
 
 class Net(nn.Module):
     def __init__(self):

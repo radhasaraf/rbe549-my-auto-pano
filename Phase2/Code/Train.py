@@ -57,7 +57,7 @@ else:
 print(f"Running on device: {device}")
 
 
-def GenerateBatch(BasePath: str, train_images: List, labels: Dict, MiniBatchSize: int):
+def GenerateBatch(BasePath: str, train_images: List, labels: Dict, MiniBatchSize: int, set: str = "Train"):
     """
     Inputs:
     BasePath - Path to synthetic Data folder
@@ -78,8 +78,8 @@ def GenerateBatch(BasePath: str, train_images: List, labels: Dict, MiniBatchSize
 
         # Choose a random image
         random_orig_name = choice(train_images)
-        orig_img_path = os.path.join(BasePath, "Train/Orig", random_orig_name)
-        warped_img_path = os.path.join(BasePath, "Train/Warped", random_orig_name)
+        orig_img_path = os.path.join(BasePath, f"{set}/Orig", random_orig_name)
+        warped_img_path = os.path.join(BasePath, f"{set}/Warped", random_orig_name)
 
         chan1 = cv2.imread(orig_img_path, cv2.IMREAD_GRAYSCALE)
         chan2 = cv2.imread(warped_img_path, cv2.IMREAD_GRAYSCALE)
@@ -159,6 +159,8 @@ def TrainOperation(
         StartEpoch = 0
         print("New model initialized....")
 
+    validation_set_image_names = os.listdir(os.path.join(BasePath, "Val/Orig/"))
+
     for Epochs in tqdm(range(StartEpoch, NumEpochs)):
         NumIterationsPerEpoch = int(NumTrainSamples / MiniBatchSize / DivTrain)
         for PerEpochCounter in tqdm(range(NumIterationsPerEpoch)):
@@ -185,17 +187,6 @@ def TrainOperation(
                     + "model.ckpt"
                 )
 
-                result = model.validation_step(I1Batch, CoordinatesBatch)
-
-                # Tensorboard
-                Writer.add_scalar(
-                    "LossEveryIter",
-                    result["val_loss"],
-                    Epochs * NumIterationsPerEpoch + PerEpochCounter,
-                )
-                # If you don't flush the tensorboard doesn't update until a lot of iterations!
-                Writer.flush()
-
                 torch.save(
                     {
                         "epoch": Epochs,
@@ -207,34 +198,33 @@ def TrainOperation(
                 )
                 print("\n" + SaveName + " Model Saved...")
 
+        val_batch, val_labels = GenerateBatch(
+            BasePath, validation_set_image_names, TrainCoordinates, MiniBatchSize, "Val"
+        )
 
-            # val_batch, val_labels = GenerateBatch(
-            #     BasePath, DirNamesTrain, TrainCoordinates, MiniBatchSize
-            # )
+        result = model.validation_step(val_batch, val_labels)
 
-            # result = model.validation_step(I1Batch, CoordinatesBatch)
-            #
-            # # Tensorboard
-            # Writer.add_scalar(
-            #     "LossEveryIter",
-            #     result["val_loss"],
-            #     Epochs * NumIterationsPerEpoch + PerEpochCounter,
-            # )
-            # # If you don't flush the tensorboard doesn't update until a lot of iterations!
-            # Writer.flush()
+        # Tensorboard
+        Writer.add_scalar(
+            "LossEveryEpoch",
+            result["val_loss"],
+            Epochs * NumIterationsPerEpoch + PerEpochCounter,
+        )
+        # If you don't flush the tensorboard doesn't update until a lot of iterations!
+        Writer.flush()
 
         # Save model every epoch
-        # SaveName = CheckPointPath + str(Epochs) + "model.ckpt"
-        # torch.save(
-        #     {
-        #         "epoch": Epochs,
-        #         "model_state_dict": model.state_dict(),
-        #         "optimizer_state_dict": Optimizer.state_dict(),
-        #         "loss": LossThisBatch,
-        #     },
-        #     SaveName,
-        # )
-        # print("\n" + SaveName + " Model Saved...")
+        SaveName = CheckPointPath + str(Epochs) + "model.ckpt"
+        torch.save(
+            {
+                "epoch": Epochs,
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": Optimizer.state_dict(),
+                "loss": LossThisBatch,
+            },
+            SaveName,
+        )
+        print("\n" + SaveName + " Model Saved...")
 
 
 def main():
