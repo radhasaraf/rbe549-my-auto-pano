@@ -28,7 +28,7 @@ def LossFn(out, labels):
     return loss
 
 
-class HomographyModel(pl.LightningModule):
+class HomographyModel():
     def __init__(self):
         super(HomographyModel, self).__init__()
         self.model = Net()

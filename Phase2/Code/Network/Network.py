@@ -15,16 +15,17 @@ import sys
 import torch
 import torch.nn.functional as F
 import pytorch_lightning as pl
+from Phase2.Code.Network.TensorDLT import tensorDLT 
+
 # import kornia  # You can use this to get the transform and warp in this project
 
 # Don't generate pyc codes
 sys.dont_write_bytecode = True
 
+def unsupervised_homography_net_loss():
 
-def LossFn(delta, img_a, patch_b, corners):
-    ###############################################
-    # Fill your loss function of choice here!
-    ###############################################
+def LossFn(modelType, delta, img_a, patch_b, corners):
+    if modelType == "Sup":
 
     ###############################################
     # You can use kornia to get the transform and warp in this project
@@ -34,26 +35,21 @@ def LossFn(delta, img_a, patch_b, corners):
     return loss
 
 
-class HomographyModel(pl.LightningModule):
-    def __init__(self, hparams):
-        super(HomographyModel, self).__init__()
-        self.hparams = hparams
-        self.model = Net()
+class HomographyModel():
+    def __init__(self, modelType):
+        self.modelType = modelType
+        if self.modelType == "UnSup":
+            self.model = UnSupNet()
+        elif self.modelType == "Sup":
+            self.model = SupNet()
 
     def forward(self, a, b):
         return self.model(a, b)
 
-    def training_step(self, batch, batch_idx):
-        img_a, patch_a, patch_b, corners, gt = batch
-        delta = self.model(patch_a, patch_b)
-        loss = LossFn(delta, img_a, patch_b, corners)
-        logs = {"loss": loss}
-        return {"loss": loss, "log": logs}
-
     def validation_step(self, batch, batch_idx):
         img_a, patch_a, patch_b, corners, gt = batch
         delta = self.model(patch_a, patch_b)
-        loss = LossFn(delta, img_a, patch_b, corners)
+        loss = LossFn(self.modelType, delta, img_a, patch_b, corners)
         return {"val_loss": loss}
 
     def validation_epoch_end(self, outputs):
@@ -62,17 +58,9 @@ class HomographyModel(pl.LightningModule):
         return {"avg_val_loss": avg_loss, "log": logs}
 
 
-class Net(nn.Module):
-    def __init__(self, InputSize, OutputSize):
-        """
-        Inputs:
-        InputSize - Size of the Input
-        OutputSize - Size of the Output
-        """
+class SupNet(nn.Module):
+    def __init__(self):
         super().__init__()
-        #############################
-        # Fill your network initialization of choice here!
-        #############################
         self.conv1 = nn.Sequential(
             nn.Conv2d(2, 64, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(64),
@@ -98,8 +86,37 @@ class Net(nn.Module):
         self.fc1 = nn.Linear(16 * 16 * 128, 1024)
         self.fc2 = nn.Linear(1024, 8)
 
+    def forward(self, xa, xb):
+        """
+        Input:
+        xa is a MiniBatch of the image a
+        xb is a MiniBatch of the image b
+        Outputs:
+        out - output of the network
+        """
+        x = torch.concat([xa,xb],axis=2)
+        x = self.conv1(x)
+        x = self.conv2(x)
+        x = self.maxpool(x)
+        x = self.conv2(x)
+        x = self.conv2(x)
+        x = self.maxpool(x)
+        x = self.conv3(x)
+        x = self.conv4(x)
+        x = self.maxpool(x)
+        x = self.conv4(x)
+        x = self.conv4(x)
+        x = self.fc1(x)
+        x = self.dropout1(x)
+        x = self.fc2(x)
+        x = self.dropout2(x)
 
-        ...
+        return x
+
+
+class UnSupNet(nn.Module):
+    def __init__(self):
+        super().__init__()
         #############################
         # You will need to change the input size and output
         # size for your Spatial transformer network layer!
@@ -125,6 +142,7 @@ class Net(nn.Module):
             torch.tensor([1, 0, 0, 0, 1, 0], dtype=torch.float)
         )
 
+    
     #############################
     # You will need to change the input size and output
     # size for your Spatial transformer network layer!
@@ -140,33 +158,5 @@ class Net(nn.Module):
         x = F.grid_sample(x, grid)
 
         return x
-
-    def forward(self, xa, xb):
-        """
-        Input:
-        xa is a MiniBatch of the image a
-        xb is a MiniBatch of the image b
-        Outputs:
-        out - output of the network
-        """
-        #############################
-        # Fill your network structure of choice here!
-        #############################
-        x = torch.concat([xa,xb],axis=2)
-        x = self.conv1(x)
-        x = self.conv2(x)
-        x = self.maxpool(x)
-        x = self.conv2(x)
-        x = self.conv2(x)
-        x = self.maxpool(x)
-        x = self.conv3(x)
-        x = self.conv4(x)
-        x = self.maxpool(x)
-        x = self.conv4(x)
-        x = self.conv4(x)
-        x = self.fc1(x)
-        x = self.dropout1(x)
-        x = self.fc2(x)
-        x = self.dropout2(x)
-
-        return x
+    def forward(self,xa,xb):
+        pass
