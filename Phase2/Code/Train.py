@@ -255,7 +255,7 @@ def main():
     Parser.add_argument(
         "--NumEpochs",
         type=int,
-        default=5,
+        default=10,
         help="Number of Epochs to Train for, Default:50",
     )
     Parser.add_argument(
@@ -267,7 +267,7 @@ def main():
     Parser.add_argument(
         "--MiniBatchSize",
         type=int,
-        default=5,
+        default=32,
         help="Size of the MiniBatch to use, Default:1",
     )
     Parser.add_argument(
