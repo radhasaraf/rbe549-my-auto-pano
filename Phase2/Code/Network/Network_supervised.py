@@ -53,7 +53,7 @@ class Net(nn.Module):
     def __init__(self):
         super().__init__()
         self.conv1 = nn.Sequential(
-            nn.Conv2d(2, 64, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(6, 64, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU()
         )

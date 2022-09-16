@@ -81,16 +81,16 @@ def GenerateBatch(BasePath: str, train_images: List, labels: Dict, MiniBatchSize
         orig_img_path = os.path.join(BasePath, f"{set}/Orig", random_orig_name)
         warped_img_path = os.path.join(BasePath, f"{set}/Warped", random_orig_name)
 
-        chan1 = cv2.imread(orig_img_path, cv2.IMREAD_GRAYSCALE)
-        chan2 = cv2.imread(warped_img_path, cv2.IMREAD_GRAYSCALE)
+        img1 = cv2.imread(orig_img_path)
+        img2 = cv2.imread(warped_img_path)
 
-        stacked_image = np.float32(cv2.merge([chan1, chan2]))
+        stacked_images = np.float32(np.concatenate([img1, img2], axis=2))
 
         # Get label
         h4pt = labels[random_orig_name]
 
         # Append All Images and Mask
-        stacked_images_batch.append(torch.from_numpy(stacked_image))
+        stacked_images_batch.append(torch.from_numpy(stacked_images))
         h4pt_batch.append(torch.tensor(h4pt))
 
     return torch.stack(stacked_images_batch).to(device), torch.stack(h4pt_batch).to(device)

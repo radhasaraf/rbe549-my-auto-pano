@@ -15,7 +15,7 @@ if not MSCOCO_DATA_PATH:
     MSCOCO_DATA_PATH = '/home/radha/WPI/CV/hw1/rrsaraf_p1/Phase2/Data/Train/'
 
 
-def generate_data(patch_size: int = 128, perturb_max: int = 32, pixel_buffer_len: int = 150):
+def generate_data(patch_size: int = 128, perturb_max: int = 32, pixel_buffer_len: int = 150, color: bool = True):
     """
     Generates synthetic data (original & warped images, homography labels)
     using the approach as described in https://arxiv.org/pdf/1606.03798.pdf
@@ -41,12 +41,13 @@ def generate_data(patch_size: int = 128, perturb_max: int = 32, pixel_buffer_len
         for img_path in img_paths:
             img_name = img_path.split('/')[-1].split('.')[0]  # The index of image in MSCOCO dataset given
 
-            # Convert to grayscale
             img = cv2.imread(img_path)
-            img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            if not color:
+                # Convert to grayscale
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
             # Create bounds of active region
-            h, w = img_gray.shape
+            h, w = img.shape[0], img.shape[1]
             active_h = [pixel_buffer_len, h - pixel_buffer_len]
             active_w = [pixel_buffer_len, w - pixel_buffer_len]
 
@@ -67,13 +68,13 @@ def generate_data(patch_size: int = 128, perturb_max: int = 32, pixel_buffer_len
                     perturbed_corners = patch_corners + perturbations
 
                     # Estimate homography between the two sets of corners
-                    h, _ = cv2.findHomography(patch_corners, perturbed_corners)
-                    transformed_img = cv2.warpPerspective(img_gray, np.linalg.inv(h), img_gray.shape, flags=cv2.INTER_LINEAR)
+                    homograhy, _ = cv2.findHomography(patch_corners, perturbed_corners)
+                    transformed_img = cv2.warpPerspective(img, np.linalg.inv(homograhy), (h, w), flags=cv2.INTER_LINEAR)
 
                     # Get the corresponding original & perturbed patches
-                    img_crop = img_gray[i: i + patch_size, j: j + patch_size]
+                    img_crop = img[i: i + patch_size, j: j + patch_size]
                     transformed_img_crop = transformed_img[i: i + patch_size, j: j + patch_size]
-                    if transformed_img_crop.shape != (128, 128):
+                    if transformed_img_crop.shape != img_crop.shape:
                         continue
 
                     image_counter += 1
