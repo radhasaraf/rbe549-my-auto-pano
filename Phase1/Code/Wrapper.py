@@ -60,13 +60,15 @@ def calc_and_print_stats(suffix, image):
     mini = min(arr)
     avg = np.average(arr)
     stddev = np.std(arr)
-    print(f"{suffix} mean:{avg}")
-    print(f"{suffix} max:{maxi}")
-    print(f"{suffix} min:{mini}")
-    print(f"{suffix} dev:{stddev}")
+    # print(f"{suffix} mean:{avg}")
+    # print(f"{suffix} max:{maxi}")
+    # print(f"{suffix} min:{mini}")
+    # print(f"{suffix} dev:{stddev}")
     return [max,min,avg,stddev]
 
-def standardize_image(image):
+def standardize_image(image,debug=False):
+    if debug:
+        print(type(image))
     mean = np.mean(image,keepdims=True)
     std = np.sqrt((image - mean)**2).mean(keepdims=True)
     return (image - mean)/std
@@ -219,8 +221,10 @@ def get_corner_descriptors(img_gray: List[List], corner_locs: np.array(List[List
         "subsampling every 25th pixel"
         corner_patch = corner_patch.flatten()[::25]
         corner_patch = np.reshape(corner_patch,newshape=(8,8))
-        corner_patch = standardize_image(corner_patch)
-        corner_patch = cv2.GaussianBlur(corner_patch, (3, 3), 1)
+        # print(corner_patch.shape)
+        # print(corner_patch)
+        corner_patch = standardize_image(corner_patch,False)
+        # corner_patch = cv2.GaussianBlur(corner_patch, (3, 3), 1)
         feature_descriptor = FeatureDescriptor(x,y,corner_patch.flatten())
         corner_descriptors.append(feature_descriptor)
     return corner_descriptors
@@ -244,6 +248,7 @@ def get_feature_matches(img1_descriptor: List[FeatureDescriptor], img2_descripto
         second_min_dist = math.inf
         match_point2 = None
         for point2 in img2_descriptor:
+            # print(f"point1:{point1}\npoint2:{point2}")
             dist = math.dist(point1.feature_descriptor, point2.feature_descriptor)
             if dist < min_dist:
                 second_min_dist = min_dist
@@ -304,9 +309,9 @@ def perform_ransac(max_ransac_iters,first_kps,second_kps):
 
         error = np.sum((kps_dst - X_proj)**2,axis=1)
 
-        curr_iter_inliers = np.sum(error < 25) ## TODO threshold as parameter
+        curr_iter_inliers = np.sum(error < 5) ## TODO threshold as parameter
         if curr_iter_inliers > np.sum(max_inliers):
-            max_inliers = (error < 25)
+            max_inliers = (error < 5)
     
     return max_inliers
 
@@ -315,7 +320,7 @@ def find_homography(ref_kps,to_kps,kps_inds):
     kps_dst = np.array([point.pt for point in ref_kps])
     inlier_src = kps_src[kps_inds]
     inlier_dst = kps_dst[kps_inds]
-    H = cv2.findHomography(inlier_src,inlier_dst)[0]
+    H,_ = cv2.findHomography(inlier_src,inlier_dst)
     return H
 
 def get_img_coords(img_shape):
@@ -401,11 +406,13 @@ def affine_and_resize_image(image,translation_vec,new_shape):
     return tf_ref_img,new_bb_coords,final_canvas_shape
 
 def stitch_images(ref_image,to_image,Args,ref_file_id,to_file_id):
+    print(f"\n\n Running stitch_images for {ref_file_id}<-{to_file_id}")
     ch_block_size = Args.CornerHarrisBlockSize
     ch_ksize = Args.CornerHarrisSobelOpSize
     ch_k = Args.CornerHarrisKParameter
     n_max_ransac_iterations = Args.RansacMaxIterations
     local_maxima_stddev_threshold_factor = Args.StdDevThresholdFactorForLocalMaxima
+    max_features =  Args.ANMSMaxFeatures
     base_path = Args.BasePath
     img_set = Args.TestSet
     input_file_extension = '.jpg'
@@ -485,7 +492,7 @@ def stitch_images(ref_image,to_image,Args,ref_file_id,to_file_id):
     """
     ref_anms_coords = apply_anms_to_img(ref_local_max_corners_coords,
                                 ref_local_max_corners,
-                                200)
+                                max_features)
 
     draw_markers("anms_corners",
             ref_image,
@@ -499,7 +506,7 @@ def stitch_images(ref_image,to_image,Args,ref_file_id,to_file_id):
 
     to_anms_coords = apply_anms_to_img(to_local_max_corners_coords,
                                 to_local_max_corners,
-                                200)
+                                max_features)
     
     draw_markers("anms_corners",
             to_image,
@@ -552,11 +559,12 @@ def stitch_images(ref_image,to_image,Args,ref_file_id,to_file_id):
                 ref_file_id,
                 to_file_id,
                 output_file_extension,
-                out_path)
+                out_path,
+                suffix="ransac")
     
     H = find_homography(ref_kps,to_kps,max_inliers)
 
-
+    return H,np.sum(max_inliers)
     """
     Image Warping + Blending
     Save Panorama output as mypano.png
@@ -583,12 +591,12 @@ def stitch_images(ref_image,to_image,Args,ref_file_id,to_file_id):
     stitch_img = tf_ref_img
     print(stitch_img.shape)
     print(tf_to_img.shape)
-    write_image_output(f"image{ref_file_id}{to_file_id}_stitch",
-            to_file_id,
-            output_file_extension,
-            stitch_img,
-            out_path,
-            display=False)
+    # write_image_output(f"image{ref_file_id}{to_file_id}_stitch",
+    #         to_file_id,
+    #         output_file_extension,
+    #         stitch_img,
+    #         out_path,
+    #         display=False)
 
     print(f"to {tf_to_bb_coords[0:2].T}")
     print(f"ref {tf_ref_bb_coords[0:2].T}")
@@ -599,7 +607,7 @@ def stitch_images(ref_image,to_image,Args,ref_file_id,to_file_id):
     
     for i in range(stitch_img.shape[0]):
         for j in range(stitch_img.shape[1]):
-            if poly1.contains(Point(j,i)):
+            if poly1.contains(Point(j,i)) and tf_to_img[i,j,0] !=0 and  tf_to_img[i,j,1] !=0 and tf_to_img[i,j,2] !=0:
                 stitch_img[i,j] = tf_to_img[i,j]
     
     write_image_output(f"image{ref_file_id}{to_file_id}_clear_stitch",
@@ -616,8 +624,9 @@ def main():
     Parser.add_argument('--BasePath',default='../Data/Train/',help='Base path to get images from,Default:../Data/Train/')
     Parser.add_argument('--TestSet',default='Set1/',help='Test set to run algorithm on,Default:Set1')
     Parser.add_argument('--CornerHarrisBlockSize', default=4, help='Block Size for Harris Corner Detection, Default:7')
-    Parser.add_argument('--CornerHarrisSobelOpSize', default=5, help='Block Size for Harris Corner Detection, Default:11')
+    Parser.add_argument('--CornerHarrisSobelOpSize', default=7, help='Block Size for Harris Corner Detection, Default:11')
     Parser.add_argument('--CornerHarrisKParameter', default=0.04, help='Block Size for Harris Corner Detection, Default:0.04')
+    Parser.add_argument('--ANMSMaxFeatures', default=10000, help='Block Size for Harris Corner Detection, Default:0.04')
     Parser.add_argument('--StdDevThresholdFactorForLocalMaxima',default=1,help='threshold for local maxima based on standard deviation of standardized corner score,Default:1')
     Parser.add_argument('--RansacMaxIterations',default=10000,help='Maximum number of iterations a RANSAC algorithm should run, Default:10000')
 
@@ -641,15 +650,32 @@ def main():
         images_color.append(img_color_orig)
 
     images_color = np.array(images_color)
-    print(images_color.shape)
-    ref_image = images_color[0]
-    ref_file_id = file_names[0]
 
-    # stitch_images(ref_image,images_color[1],Args,"1",file_names[1])
+    # ref_image = images_color[1]
+    # ref_file_id = file_names[1]
+
+    imgs_graph = np.zeros(shape=(len(files),len(files)))
+    homography_mats_list = []
+    homography_inds_mat = np.zeros(shape=(len(files),len(files)))
+    for i in range(len(files)):
+        for j in range(len(files)):
+            if i == j:
+                continue
+            print(f"\n\nRunning Iteration for {i},{j}")
+            H, inliers = stitch_images(images_color[i],images_color[j],Args,file_names[i],file_names[j])
+            imgs_graph[i,j] = inliers
+            homography_mats_list.append(H)
+            homography_inds_mat[i,j] = len(homography_mats_list)
+
+    print(imgs_graph)
+    print(homography_inds_mat)
+
+    # stitch_images(ref_image,images_color[2],Args,ref_file_id,file_names[2])
     # return
-    for i in range(1,len(files)):
-        ref_image,ref_file_id = stitch_images(ref_image,images_color[i],Args,ref_file_id,file_names[i])
-    return
+    # for i in range(1,len(files)):
+    #     ref_image,ref_file_id = stitch_images(ref_image,images_color[i],Args,ref_file_id,file_names[i])
+    #     print(i,ref_file_id)
+    # return
 
 
 if __name__ == "__main__":
