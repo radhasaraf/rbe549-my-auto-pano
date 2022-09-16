@@ -169,6 +169,8 @@ def TrainOperation(
             )
 
             # Predict output with forward pass
+            model.train()
+
             PredicatedCoordinatesBatch = model(I1Batch)
             LossThisBatch = LossFn(PredicatedCoordinatesBatch, CoordinatesBatch)
 
@@ -198,11 +200,12 @@ def TrainOperation(
                 )
                 print("\n" + SaveName + " Model Saved...")
 
-        val_batch, val_labels = GenerateBatch(
-            BasePath, validation_set_image_names, TrainCoordinates, MiniBatchSize, "Val"
-        )
-
-        result = model.validation_step(val_batch, val_labels)
+        model.eval()
+        with torch.no_grad():
+            val_batch, val_labels = GenerateBatch(
+                BasePath, validation_set_image_names, TrainCoordinates, MiniBatchSize, "Val"
+            )
+            result = model.validation_step(val_batch, val_labels)
 
         # Tensorboard
         Writer.add_scalar(
