@@ -136,3 +136,10 @@ dmypy.json
 # not adding data
 Data
 events.out*
+Data - Copy
+events.out*
+*.aux
+*.fdb_latexmk
+*.fls
+*.gz
+>>>>>>> Stashed changes

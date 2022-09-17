@@ -116,7 +116,8 @@
 % *** GRAPHICS RELATED PACKAGES ***
 %
 \ifCLASSINFOpdf
-  % \usepackage[pdftex]{graphicx}
+  \usepackage[pdftex]{graphicx}
+  \usepackage[font=scriptsize]{caption}
   % declare the path(s) where your graphic files are
   % \graphicspath{{../pdf/}{../jpeg/}}
   % and their extensions so you won't have to specify these with
@@ -217,11 +218,12 @@
 
 
 % *** SUBFIGURE PACKAGES ***
-%\ifCLASSOPTIONcompsoc
-%  \usepackage[caption=false,font=normalsize,labelfont=sf,textfont=sf]{subfig}
-%\else
-%  \usepackage[caption=false,font=footnotesize]{subfig}
-%\fi
+\ifCLASSOPTIONcompsoc/
+\usepackage[caption=false,font=normalsize,labelfont=sf,textfont=sf]{subfig}
+\else
+\usepackage[caption=false,font=footnotesize]{subfig}
+\fi
+\usepackage[export]{adjustbox}
 % subfig.sty, written by Steven Douglas Cochran, is the modern replacement
 % for subfigure.sty, the latter of which is no longer maintained and is
 % incompatible with some LaTeX packages including fixltx2e. However,
@@ -368,9 +370,9 @@
 
 % As a general rule, do not put math, special symbols or citations
 % in the abstract
-% \begin{abstract}
-% The abstract goes here.
-% \end{abstract}
+\begin{abstract}
+This project shows methods to create a panorama by exploring ways to generate a homography using both classical and deep learning based methods. We see how the deep learning models abstract out many of the classical models for corner detection, feature descriptors and matching. The output of both approaches is used to stitch and create a seamless panorama
+\end{abstract}
 
 % no keywords
 
@@ -390,18 +392,36 @@
 
 \section{Phase I: Classical Approach}
 
-In this part of the project, we explore the classical methods to create a panoroma by stiching the image sequences. As part of data collection, we tried 2 different sequences to check the robustness of the approach
-\begin{itemize}
-  \item Indoor cluttered environments where it is feature rich
-  \item Outdoors where features are limited 
-\end{itemize}
+In this part of the project, we explore the classical methods to create a panoroma by stiching the image sequences. Each subsection explains in detail about the methodology followed and subsequent output of the images
 
 \subsection{Corner Detection}
-For corner detection, we used OpenCV's Harris corners detection functionality. Following parameters are for corner detection are found to be optimal, kernel size 
+Idea is to draw relationship between how images using a set of features. Corners are best way to do that since they are visible from many different views. We can detect as many corners are possible from the given image and compare the features across the images. This comparison would tell us how the images are geometrically related to one another. For corner detection, we used OpenCV's Harris corners detection functionality. Following parameters are for corner detection are found to be optimal; kernel size $7$, harris $K$ parameter $0.04$, harris sobel kernel size $11$. Figure \ref{fig:image_corners} show the corners detected across the images.
 
-\subsubsection{Subsubsection Heading Here}
-Subsubsection text here.
+\begin{figure}[h]
+  \centering
+  \captionsetup{justification=centering}
+  \includegraphics[width=0.5\textwidth]{phase1/imagecorners.png}
+  \caption{\label{fig:image_corners}image corners}
+\end{figure}
+\subsection{Adaptive Non Maximal Suppression}
+Now that we have detected corners in each image, we need to find out ``best'' corners. Best corners are those which stand out among the local peer corners. Moreover, we want these corners evenly spread across the image so that we can get better homographies. To this end, we use Adaptive Non Maximal Suppression (ANMS) which does 2 parts 
+\begin{enumerate}
+  \item take local maxima over corners
+  \item \label{itm:anms_corners}consider only those corners which have a larger distance from relatively stronger corners
+\end{enumerate}
+Point \ref{itm:anms_corners} is basically the main part of the ANMS which gives evenly spread out corners from a set of ``clusters''. Problem with harris corners or any other corner detector is that they detect a cluster of corners instead of just one corner. This makes sense since a corner is a set of pixels and based on resolution of the image many pixels can be accurately called corners. Even if we do local maxima of the image, the cluster might still persist. To circumvent this problem ANMS takes a point which is maximally distant to the other stronger corners and when we take sorted $N_{best}$ corners we will be able to get a point from cluster. Figure \ref{fig:anms_corners} shows how the ANMS has decreased the cluster of corners to good corners. 
+\begin{figure}[h]
+  \centering
+  \captionsetup{justification=centering}
+  \includegraphics[width=0.5\textwidth]{phase1/anms_corners.png}
+  \caption{\label{fig:anms_corners}ANMS output}
+\end{figure}
 
+\subsection{Feature Descriptor}
+We need to give each corner an ``identity'' in order to compare them across the images. This identity is called Feature Descriptor. Our appraoch to derive this unique identification is as follows 
+\begin{enumerate}
+  \item 
+\end{enumerate}
 
 % An example of a floating figure using the graphicx package.
 % Note that \label must occur AFTER (or within) \caption.
@@ -500,23 +520,7 @@ Subsubsection text here.
 
 
 
-\section{Conclusion}
-The conclusion goes here.
-
-
-
-
 % conference papers do not normally have an appendix
-
-
-% use section* for acknowledgment
-\section*{Acknowledgment}
-
-
-The authors would like to thank...
-
-
-
 
 
 % trigger a \newpage just before the given reference
@@ -541,13 +545,6 @@ The authors would like to thank...
 % <OR> manually copy in the resultant .bbl file
 % set second argument of \begin to the number of references
 % (used to reserve space for the reference number labels box)
-\begin{thebibliography}{1}
-
-\bibitem{IEEEhowto:kopka}
-H.~Kopka and P.~W. Daly, \emph{A Guide to \LaTeX}, 3rd~ed.\hskip 1em plus
-  0.5em minus 0.4em\relax Harlow, England: Addison-Wesley, 1999.
-
-\end{thebibliography}
 
 
 
