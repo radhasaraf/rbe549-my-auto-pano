@@ -138,6 +138,7 @@ Data
 events.out*
 Data - Copy
 events.out*
+.DS_Store
 *.aux
 *.fdb_latexmk
 *.fls
