@@ -137,7 +137,6 @@ class CoOrds:
 def apply_anms_to_img(local_maxima_coords,corner_score_img,n_best):
     "input: "
     "output: numpy array of coordinates"
-    return local_maxima_coords
     if len(local_maxima_coords) <=0:
         return local_maxima_coords
 
@@ -146,9 +145,9 @@ def apply_anms_to_img(local_maxima_coords,corner_score_img,n_best):
     # initializing distances array
     distances = np.full(local_maxima_coords.shape[0],fill_value=CoOrds(0,0))
     for i,coords in enumerate(local_maxima_coords):
-        if len(coords) < 2:
-            print(coords)
-            continue
+#        if len(coords) < 2:
+#            print(coords)
+#            continue
         x,y = coords
         ret = CoOrds(x,y)
         distances[i] = ret
@@ -199,11 +198,6 @@ def get_corner_descriptors(img_gray: List[List], corner_locs: np.array(List[List
         # corner_patch = cv2.GaussianBlur(corner_patch, (3, 3), 1)
         feature_descriptor = FeatureDescriptor(x,y,corner_patch.flatten())
         corner_descriptors.append(feature_descriptor)
-#    try:
-#    except:
-#        print("something went wrong")
-#        return False, []    
-    print(len(corner_descriptors))
     return True, corner_descriptors
 
 def draw_random_corner_patch(img_fds,file_names,output_extension,output_path,display=False):
@@ -225,7 +219,6 @@ def get_feature_matches(img1_descriptor: List[FeatureDescriptor], img2_descripto
         second_min_dist = math.inf
         match_point2 = None
         for point2 in img2_descriptor:
-            # print(f"point1:{point1}\npoint2:{point2}")
             dist = math.dist(point1.feature_descriptor, point2.feature_descriptor)
             if dist < min_dist:
                 second_min_dist = min_dist
@@ -240,7 +233,6 @@ def get_feature_matches(img1_descriptor: List[FeatureDescriptor], img2_descripto
     keypoints1 = np.array(keypoints1)
     keypoints2 = np.array(keypoints2)
     keypoint_distances = np.array(keypoint_distances) 
-    print(len(keypoints1))
     return [keypoints1,keypoints2,keypoint_distances]
 
 def draw_feature_matches(keypoints1,keypoints2,keypoints_distances,first_image,second_image,ref_file_id,to_file_id,output_file_extension,output_path,suffix=""):
@@ -261,7 +253,6 @@ def perform_ransac(max_ransac_iters,first_kps,second_kps):
     kps_dst = np.array([point.pt for point in second_kps])
     
     X = np.append(kps_src,np.ones(shape=(1,kps_src.shape[0])).T,axis=1)    
-    print(kps_src.shape)
 
     max_inliers = []
     for iter in range(max_ransac_iters):
@@ -526,12 +517,37 @@ def get_img_correspondences(ref_image_orig, to_image_orig, ref_fds,to_fds,Args,r
 
     return True, H,np.sum(max_inliers)
 
-def stitch_images(ref_image,to_image,H):
+def get_effective_homography(I,graph,reference_id,eff_homography_list,eff_homography_ids):
+    visited = False
+    print(f"I:{I}")
+    if I == reference_id:
+        return None
+    for j in range(graph.shape[0]):
+        if visited:
+            print("something is wrong")
+            return
+        if j == reference_id:
+            continue
+        if graph[j,I] != 0:
+            visited = True
+            I_d = eff_homography_ids[I]
+            val = get_effective_homography(j,graph,reference_id,eff_homography_list,eff_homography_ids)
+            if val is None:
+                continue
+            eff_homography_list[I_d] = val*eff_homography_list[I_d]
+    return eff_homography_list[eff_homography_ids[I]]
+
+def n_node_conxns(i,graph):
+    return len(np.nonzero(graph[i]))
+def node_total_weights(i,graph):
+    return graph[i].sum()
+
+def stitch_images(ref_image,to_image,H,T,ref_file_id,to_file_id,output_file_extension,out_path):
     """
     Image Warping + Blending
     Save Panorama output as mypano.png
     """
-
+    H = H + T
     tf_to_img,translation_vec,final_to_img_shape,tf_to_bb_coords = get_full_homography_img(to_image,H)
     write_image_output(f"image{ref_file_id}_{to_file_id}_perspective",
             to_file_id,
@@ -578,7 +594,9 @@ def stitch_images(ref_image,to_image,H):
         stitch_img,
         out_path,
         display=False)
-    return stitch_img,f"{ref_file_id}{to_file_id}"
+    affine_mat = np.zeros(shape=(3,3))
+    affine_mat[0:2,2] = translation_vec.T[0,0:2]
+    return stitch_img,f"{ref_file_id}{to_file_id}",affine_mat
 
 def main():
     # Add any Command Line arguments here
@@ -596,6 +614,7 @@ def main():
     base_path = Args.BasePath
     img_set = Args.TestSet
     input_file_extension = '.jpg'
+    output_file_extension = '.png'
     
     """
     Read a set of images for Panorama stitching
@@ -627,7 +646,7 @@ def main():
     """
     imgs_graph = np.zeros(shape=(len(files),len(files)))
     homography_mats_list = []
-    homography_inds_mat = np.zeros(shape=(len(files),len(files)))
+    homography_inds_mat = np.zeros(shape=(len(files),len(files)),dtype=int)
     for i in range(len(files)):
         if not fds[i][0]:
             continue
@@ -643,30 +662,103 @@ def main():
             print(f"inliers:{inliers}")
             imgs_graph[i,j] = inliers
             homography_mats_list.append(H)
-            homography_inds_mat[i,j] = len(homography_mats_list)
+            homography_inds_mat[i,j] = len(homography_mats_list) - 1
 
     print(imgs_graph)
     print(homography_inds_mat)
-
-
+    ref_image = images_color[0]
+    ref_file_id = file_names[0]
+    T = np.zeros(shape=(3,3))
+    for i in range(1,3):
+        homography = homography_mats_list[homography_inds_mat[0,i]] + T
+        ref_image,ref_file_id,T = stitch_images(ref_image,images_color[i],homography,T,ref_file_id,file_names[i],output_file_extension,base_path+img_set)
+    return
     """
     Recognizing panorama images
     """
     """
     Step: 1
+        Thresholdinng the inliers
+    """
+    imgs_graph[imgs_graph < 10 ] = 0
+    print(f"after thresholding:\n{imgs_graph}")
+    """
+    Step: 2
         Identify directions of the panorama graph
         from homography matrix
     """
-#    for i in range(len(files)):
-#        for j in range(k
+    imgs_graph[imgs_graph < imgs_graph.T] = 0
+    print(f"after fixing directions:\n{imgs_graph}")
+    """
+    Step: 3
+        fix final directions by taking
+        max features per column
+    """
+    imgs_graph[np.max(imgs_graph,axis=0,keepdims=True)!=imgs_graph]=0
+    for i in range(imgs_graph.shape[0]):
+        for j in range(imgs_graph.shape[0]):
+            if imgs_graph[i,j] != 0 and imgs_graph[i,j] == imgs_graph[j,i]:
+                if n_node_conxns(i,imgs_graph) > n_node_conxns(j,imgs_graph):
+                    imgs_graph[j,i] = 0
+                elif n_node_conxns(j,imgs_graph) > n_node_conxns(i,imgs_graph):
+                    imgs_graph[i,j] = 0
+                else:
+                    if node_total_weights(i,imgs_graph) >= node_total_weights(j,imgs_graph):
+                        imgs_graph[j,i] = 0
+                    else:
+                        imgs_graph[i,j] = 0
 
+    print(f"after finalizing node connections:\n{imgs_graph}")
+    """
+    Step: 4
+        get reference image
+    """
+    ref_image_id = np.where(~imgs_graph.any(axis=0))[0][0]
+    print(f"ref_image_id:{ref_image_id}")
+    """
+    Step: 5
+    find the effective homography transformation 
+        for each image to the ref_image_id
+        essentially ref_image_id is the root of the graph
+        we need to calculate effective homography of every node 
+            to the root node
+        effective homography is just multiplication of 
+            all the homographies
+    """
+    # initialize the effective homograpy matrix list
+    eff_H_list = []
+    eff_H_list_ids = np.full(imgs_graph.shape[0],dtype=int,fill_value=-1)
+    nonzero_list_id = np.nonzero(imgs_graph)
+    for k,j in enumerate(nonzero_list_id[1]):
+        print(nonzero_list_id[0][k],j)
+        eff_H = homography_mats_list[homography_inds_mat[nonzero_list_id[0][k],j]]
+        eff_H_list.append(eff_H)
+        eff_H_list_ids[j] = len(eff_H_list) - 1
 
-    # stitch_images(ref_image,images_color[2],Args,ref_file_id,file_names[2])
-    # return
-    # for i in range(1,len(files)):
-    #     ref_image,ref_file_id = stitch_images(ref_image,images_color[i],Args,ref_file_id,file_names[i])
-    #     print(i,ref_file_id)
-    # return
+    print(eff_H_list)
+    print(eff_H_list_ids)
+
+    # calculate the effective homography of every node to the root node
+    eff_H_vals = np.full((imgs_graph.shape[0],3,3),fill_value = np.identity(3))
+    for i in range(imgs_graph.shape[0]):
+        print(f"i:{i}")
+        val = get_effective_homography(i,imgs_graph,ref_image_id,eff_H_list,eff_H_list_ids)
+        if val is None:
+            continue
+        eff_H_vals[i] = val
+    print(eff_H_vals)
+
+    ref_image = images_color[ref_image_id]
+    ref_file_id = file_names[ref_image_id]
+#    stitch_images(ref_image,images_color[0],eff_H_vals[0],ref_file_id,file_names[0],output_file_extension,base_path+img_set)
+    T = np.zeros(shape=(3,3))
+
+    for i in range(0,len(files)):
+        if i == ref_image_id:
+            continue
+        ref_image,ref_file_id,T = stitch_images(ref_image,images_color[i],eff_H_vals[i],T,ref_file_id,file_names[i],output_file_extension,base_path+img_set)
+        print(i,ref_file_id)
+    return
 
 
 if __name__ == "__main__":
