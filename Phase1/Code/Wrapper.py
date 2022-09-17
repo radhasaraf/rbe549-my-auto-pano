@@ -435,7 +435,18 @@ def stitch_images(ref_image,to_image,Args,ref_file_id,to_file_id):
                                 to_file_id,
                                 output_file_extension,
                                 out_path)
-   
+    # to_img_corners[to_img_corners < 40] = 0
+    # to_img_corners_coords = np.array(np.nonzero(to_img_corners)).T
+    # draw_markers("embed_full_corners",
+    #         to_image,
+    #         to_img_corners_coords,
+    #         color=[0,255,0],
+    #         file_name=to_file_id,
+    #         output_file_extension=output_file_extension,
+    #         path=out_path,
+    #         display=False)
+    # print(to_img_corners_coords)
+    # return
 
     """
     local maxima
@@ -516,6 +527,7 @@ def stitch_images(ref_image,to_image,Args,ref_file_id,to_file_id):
     """
     ref_fds = get_corner_descriptors(ref_img_gray, ref_anms_coords)
     to_fds = get_corner_descriptors(to_img_gray, to_anms_coords)
+    # draw_random_corner_patch(to_fds,ref_file_id,output_file_extension,out_path)
 
     """
     Feature Matching
@@ -552,7 +564,8 @@ def stitch_images(ref_image,to_image,Args,ref_file_id,to_file_id):
                 ref_file_id,
                 to_file_id,
                 output_file_extension,
-                out_path)
+                out_path,
+                suffix="ransac")
     
     H = find_homography(ref_kps,to_kps,max_inliers)
 
