@@ -599,7 +599,7 @@ def stitch_images(ref_image,to_image,Args,ref_file_id,to_file_id):
     
     for i in range(stitch_img.shape[0]):
         for j in range(stitch_img.shape[1]):
-            if poly1.contains(Point(j,i)):
+            if poly1.contains(Point(j,i)) and tf_to_img[i,j,0] != 0 and tf_to_img[i,j,1] != 0 and tf_to_img[i,j,2] != 0:
                 stitch_img[i,j] = tf_to_img[i,j]
     
     write_image_output(f"image{ref_file_id}{to_file_id}_clear_stitch",
