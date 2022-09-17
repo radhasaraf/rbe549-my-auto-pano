@@ -180,6 +180,16 @@ def TrainOperation(
 
             # Save checkpoint every some SaveCheckPoint's iterations
             if PerEpochCounter % SaveCheckPoint == 0:
+
+                # Write training losses to tensorboard
+                Writer.add_scalar(
+                    "LossEveryIter",
+                    LossThisBatch,
+                    Epochs * NumIterationsPerEpoch + PerEpochCounter,
+                )
+                # If you don't flush the tensorboard doesn't update until a lot of iterations!
+                Writer.flush()
+
                 # Save the Model learnt in this epoch
                 SaveName = (
                     CheckPointPath
@@ -207,11 +217,11 @@ def TrainOperation(
             )
             result = model.validation_step(val_batch, val_labels)
 
-        # Tensorboard
+        # Write validation losses to tensorboard
         Writer.add_scalar(
             "LossEveryEpoch",
             result["val_loss"],
-            Epochs * NumIterationsPerEpoch + PerEpochCounter,
+            Epochs,
         )
         # If you don't flush the tensorboard doesn't update until a lot of iterations!
         Writer.flush()
