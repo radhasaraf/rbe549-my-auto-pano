@@ -666,13 +666,13 @@ def main():
 
     print(imgs_graph)
     print(homography_inds_mat)
-    ref_image = images_color[0]
-    ref_file_id = file_names[0]
-    T = np.zeros(shape=(3,3))
-    for i in range(1,3):
-        homography = homography_mats_list[homography_inds_mat[0,i]] + T
-        ref_image,ref_file_id,T = stitch_images(ref_image,images_color[i],homography,T,ref_file_id,file_names[i],output_file_extension,base_path+img_set)
-    return
+    # ref_image = images_color[0]
+    # ref_file_id = file_names[0]
+    # T = np.zeros(shape=(3,3))
+    # for i in range(1,3):
+    #     homography = homography_mats_list[homography_inds_mat[0,i]] + T
+    #     ref_image,ref_file_id,T = stitch_images(ref_image,images_color[i],homography,T,ref_file_id,file_names[i],output_file_extension,base_path+img_set)
+    # return
     """
     Recognizing panorama images
     """
