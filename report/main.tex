@@ -1,0 +1,863 @@
+
+%% bare_conf.tex
+%% V1.4b
+%% 2015/08/26
+%% by Michael Shell
+%% See:
+%% http://www.michaelshell.org/
+%% for current contact information.
+%%
+%% This is a skeleton file demonstrating the use of IEEEtran.cls
+%% (requires IEEEtran.cls version 1.8b or later) with an IEEE
+%% conference paper.
+%%
+%% Support sites:
+%% http://www.michaelshell.org/tex/ieeetran/
+%% http://www.ctan.org/pkg/ieeetran
+%% and
+%% http://www.ieee.org/
+
+%%*************************************************************************
+%% Legal Notice:
+%% This code is offered as-is without any warranty either expressed or
+%% implied; without even the implied warranty of MERCHANTABILITY or
+%% FITNESS FOR A PARTICULAR PURPOSE! 
+%% User assumes all risk.
+%% In no event shall the IEEE or any contributor to this code be liable for
+%% any damages or losses, including, but not limited to, incidental,
+%% consequential, or any other damages, resulting from the use or misuse
+%% of any information contained here.
+%%
+%% All comments are the opinions of their respective authors and are not
+%% necessarily endorsed by the IEEE.
+%%
+%% This work is distributed under the LaTeX Project Public License (LPPL)
+%% ( http://www.latex-project.org/ ) version 1.3, and may be freely used,
+%% distributed and modified. A copy of the LPPL, version 1.3, is included
+%% in the base LaTeX documentation of all distributions of LaTeX released
+%% 2003/12/01 or later.
+%% Retain all contribution notices and credits.
+%% ** Modified files should be clearly indicated as such, including  **
+%% ** renaming them and changing author support contact information. **
+%%*************************************************************************
+
+
+% *** Authors should verify (and, if needed, correct) their LaTeX system  ***
+% *** with the testflow diagnostic prior to trusting their LaTeX platform ***
+% *** with production work. The IEEE's font choices and paper sizes can   ***
+% *** trigger bugs that do not appear when using other class files.       ***                          ***
+% The testflow support page is at:
+% http://www.michaelshell.org/tex/testflow/
+
+
+
+\documentclass[conference]{IEEEtran}
+% Some Computer Society conferences also require the compsoc mode option,
+% but others use the standard conference format.
+%
+% If IEEEtran.cls has not been installed into the LaTeX system files,
+% manually specify the path to it like:
+% \documentclass[conference]{../sty/IEEEtran}
+
+
+
+
+
+% Some very useful LaTeX packages include:
+% (uncomment the ones you want to load)
+
+
+% *** MISC UTILITY PACKAGES ***
+%
+%\usepackage{ifpdf}
+% Heiko Oberdiek's ifpdf.sty is very useful if you need conditional
+% compilation based on whether the output is pdf or dvi.
+% usage:
+% \ifpdf
+%   % pdf code
+% \else
+%   % dvi code
+% \fi
+% The latest version of ifpdf.sty can be obtained from:
+% http://www.ctan.org/pkg/ifpdf
+% Also, note that IEEEtran.cls V1.7 and later provides a builtin
+% \ifCLASSINFOpdf conditional that works the same way.
+% When switching from latex to pdflatex and vice-versa, the compiler may
+% have to be run twice to clear warning/error messages.
+
+
+
+
+
+
+% *** CITATION PACKAGES ***
+%
+%\usepackage{cite}
+% cite.sty was written by Donald Arseneau
+% V1.6 and later of IEEEtran pre-defines the format of the cite.sty package
+% \cite{} output to follow that of the IEEE. Loading the cite package will
+% result in citation numbers being automatically sorted and properly
+% "compressed/ranged". e.g., [1], [9], [2], [7], [5], [6] without using
+% cite.sty will become [1], [2], [5]--[7], [9] using cite.sty. cite.sty's
+% \cite will automatically add leading space, if needed. Use cite.sty's
+% noadjust option (cite.sty V3.8 and later) if you want to turn this off
+% such as if a citation ever needs to be enclosed in parenthesis.
+% cite.sty is already installed on most LaTeX systems. Be sure and use
+% version 5.0 (2009-03-20) and later if using hyperref.sty.
+% The latest version can be obtained at:
+% http://www.ctan.org/pkg/cite
+% The documentation is contained in the cite.sty file itself.
+
+
+
+
+
+
+% *** GRAPHICS RELATED PACKAGES ***
+%
+\ifCLASSINFOpdf
+  % \usepackage[pdftex]{graphicx}
+  % declare the path(s) where your graphic files are
+  % \graphicspath{{../pdf/}{../jpeg/}}
+  % and their extensions so you won't have to specify these with
+  % every instance of \includegraphics
+  % \DeclareGraphicsExtensions{.pdf,.jpeg,.png}
+\else
+  % or other class option (dvipsone, dvipdf, if not using dvips). graphicx
+  % will default to the driver specified in the system graphics.cfg if no
+  % driver is specified.
+  % \usepackage[dvips]{graphicx}
+  % declare the path(s) where your graphic files are
+  % \graphicspath{{../eps/}}
+  % and their extensions so you won't have to specify these with
+  % every instance of \includegraphics
+  % \DeclareGraphicsExtensions{.eps}
+\fi
+% graphicx was written by David Carlisle and Sebastian Rahtz. It is
+% required if you want graphics, photos, etc. graphicx.sty is already
+% installed on most LaTeX systems. The latest version and documentation
+% can be obtained at: 
+% http://www.ctan.org/pkg/graphicx
+% Another good source of documentation is "Using Imported Graphics in
+% LaTeX2e" by Keith Reckdahl which can be found at:
+% http://www.ctan.org/pkg/epslatex
+%
+% latex, and pdflatex in dvi mode, support graphics in encapsulated
+% postscript (.eps) format. pdflatex in pdf mode supports graphics
+% in .pdf, .jpeg, .png and .mps (metapost) formats. Users should ensure
+% that all non-photo figures use a vector format (.eps, .pdf, .mps) and
+% not a bitmapped formats (.jpeg, .png). The IEEE frowns on bitmapped formats
+% which can result in "jaggedy"/blurry rendering of lines and letters as
+% well as large increases in file sizes.
+%
+% You can find documentation about the pdfTeX application at:
+% http://www.tug.org/applications/pdftex
+
+
+
+
+
+% *** MATH PACKAGES ***
+%
+%\usepackage{amsmath}
+% A popular package from the American Mathematical Society that provides
+% many useful and powerful commands for dealing with mathematics.
+%
+% Note that the amsmath package sets \interdisplaylinepenalty to 10000
+% thus preventing page breaks from occurring within multiline equations. Use:
+%\interdisplaylinepenalty=2500
+% after loading amsmath to restore such page breaks as IEEEtran.cls normally
+% does. amsmath.sty is already installed on most LaTeX systems. The latest
+% version and documentation can be obtained at:
+% http://www.ctan.org/pkg/amsmath
+
+
+
+
+
+% *** SPECIALIZED LIST PACKAGES ***
+%
+%\usepackage{algorithmic}
+% algorithmic.sty was written by Peter Williams and Rogerio Brito.
+% This package provides an algorithmic environment fo describing algorithms.
+% You can use the algorithmic environment in-text or within a figure
+% environment to provide for a floating algorithm. Do NOT use the algorithm
+% floating environment provided by algorithm.sty (by the same authors) or
+% algorithm2e.sty (by Christophe Fiorio) as the IEEE does not use dedicated
+% algorithm float types and packages that provide these will not provide
+% correct IEEE style captions. The latest version and documentation of
+% algorithmic.sty can be obtained at:
+% http://www.ctan.org/pkg/algorithms
+% Also of interest may be the (relatively newer and more customizable)
+% algorithmicx.sty package by Szasz Janos:
+% http://www.ctan.org/pkg/algorithmicx
+
+
+
+
+% *** ALIGNMENT PACKAGES ***
+%
+%\usepackage{array}
+% Frank Mittelbach's and David Carlisle's array.sty patches and improves
+% the standard LaTeX2e array and tabular environments to provide better
+% appearance and additional user controls. As the default LaTeX2e table
+% generation code is lacking to the point of almost being broken with
+% respect to the quality of the end results, all users are strongly
+% advised to use an enhanced (at the very least that provided by array.sty)
+% set of table tools. array.sty is already installed on most systems. The
+% latest version and documentation can be obtained at:
+% http://www.ctan.org/pkg/array
+
+
+% IEEEtran contains the IEEEeqnarray family of commands that can be used to
+% generate multiline equations as well as matrices, tables, etc., of high
+% quality.
+
+
+
+
+% *** SUBFIGURE PACKAGES ***
+\ifCLASSOPTIONcompsoc/
+\usepackage[caption=false,font=normalsize,labelfont=sf,textfont=sf]{subfig}
+\else
+\usepackage[caption=false,font=footnotesize]{subfig}
+\fi
+\usepackage[export]{adjustbox}
+% subfig.sty, written by Steven Douglas Cochran, is the modern replacement
+% for subfigure.sty, the latter of which is no longer maintained and is
+% incompatible with some LaTeX packages including fixltx2e. However,
+% subfig.sty requires and automatically loads Axel Sommerfeldt's caption.sty
+% which will override IEEEtran.cls' handling of captions and this will result
+% in non-IEEE style figure/table captions. To prevent this problem, be sure
+% and invoke subfig.sty's "caption=false" package option (available since
+% subfig.sty version 1.3, 2005/06/28) as this is will preserve IEEEtran.cls
+% handling of captions.
+% Note that the Computer Society format requires a larger sans serif font
+% than the serif footnote size font used in traditional IEEE formatting
+% and thus the need to invoke different subfig.sty package options depending
+% on whether compsoc mode has been enabled.
+%
+% The latest version and documentation of subfig.sty can be obtained at:
+% http://www.ctan.org/pkg/subfig
+
+
+
+
+% *** FLOAT PACKAGES ***
+%
+%\usepackage{fixltx2e}
+% fixltx2e, the successor to the earlier fix2col.sty, was written by
+% Frank Mittelbach and David Carlisle. This package corrects a few problems
+% in the LaTeX2e kernel, the most notable of which is that in current
+% LaTeX2e releases, the ordering of single and double column floats is not
+% guaranteed to be preserved. Thus, an unpatched LaTeX2e can allow a
+% single column figure to be placed prior to an earlier double column
+% figure.
+% Be aware that LaTeX2e kernels dated 2015 and later have fixltx2e.sty's
+% corrections already built into the system in which case a warning will
+% be issued if an attempt is made to load fixltx2e.sty as it is no longer
+% needed.
+% The latest version and documentation can be found at:
+% http://www.ctan.org/pkg/fixltx2e
+
+
+%\usepackage{stfloats}
+% stfloats.sty was written by Sigitas Tolusis. This package gives LaTeX2e
+% the ability to do double column floats at the bottom of the page as well
+% as the top. (e.g., "\begin{figure*}[!b]" is not normally possible in
+% LaTeX2e). It also provides a command:
+%\fnbelowfloat
+% to enable the placement of footnotes below bottom floats (the standard
+% LaTeX2e kernel puts them above bottom floats). This is an invasive package
+% which rewrites many portions of the LaTeX2e float routines. It may not work
+% with other packages that modify the LaTeX2e float routines. The latest
+% version and documentation can be obtained at:
+% http://www.ctan.org/pkg/stfloats
+% Do not use the stfloats baselinefloat ability as the IEEE does not allow
+% \baselineskip to stretch. Authors submitting work to the IEEE should note
+% that the IEEE rarely uses double column equations and that authors should try
+% to avoid such use. Do not be tempted to use the cuted.sty or midfloat.sty
+% packages (also by Sigitas Tolusis) as the IEEE does not format its papers in
+% such ways.
+% Do not attempt to use stfloats with fixltx2e as they are incompatible.
+% Instead, use Morten Hogholm'a dblfloatfix which combines the features
+% of both fixltx2e and stfloats:
+%
+% \usepackage{dblfloatfix}
+% The latest version can be found at:
+% http://www.ctan.org/pkg/dblfloatfix
+
+
+
+
+% *** PDF, URL AND HYPERLINK PACKAGES ***
+%
+%\usepackage{url}
+% url.sty was written by Donald Arseneau. It provides better support for
+% handling and breaking URLs. url.sty is already installed on most LaTeX
+% systems. The latest version and documentation can be obtained at:
+% http://www.ctan.org/pkg/url
+% Basically, \url{my_url_here}.
+
+
+
+
+% *** Do not adjust lengths that control margins, column widths, etc. ***
+% *** Do not use packages that alter fonts (such as pslatex).         ***
+% There should be no need to do such things with IEEEtran.cls V1.6 and later.
+% (Unless specifically asked to do so by the journal or conference you plan
+% to submit to, of course. )
+
+
+% correct bad hyphenation here
+\hyphenation{op-tical net-works semi-conduc-tor}
+
+
+\begin{document}
+%
+% paper title
+% Titles are generally capitalized except for words such as a, an, and, as,
+% at, but, by, for, in, nor, of, on, or, the, to and up, which are usually
+% not capitalized unless they are the first or last word of the title.
+% Linebreaks \\ can be used within to get better formatting as desired.
+% Do not put math or special symbols in the title.
+\title{Project 1: My AutoPano}
+
+
+% author names and affiliations
+% use a multiple column layout for up to three different
+% affiliations
+\author{\IEEEauthorblockN{Radha Saraf}
+\IEEEauthorblockA{Email: rrsaraf@wpi.edu}
+\and
+\IEEEauthorblockN{Sai Ramana Kiran Pinnama Raju}
+\IEEEauthorblockA{Email: spinnamaraju@wpi.edu \\ Using 2 late days} }
+
+% conference papers do not typically use \thanks and this command
+% is locked out in conference mode. If really needed, such as for
+% the acknowledgment of grants, issue a \IEEEoverridecommandlockouts
+% after \documentclass
+
+% for over three affiliations, or if they all won't fit within the width
+% of the page, use this alternative format:
+% 
+%\author{\IEEEauthorblockN{Michael Shell\IEEEauthorrefmark{1},
+%Homer Simpson\IEEEauthorrefmark{2},
+%James Kirk\IEEEauthorrefmark{3}, 
+%Montgomery Scott\IEEEauthorrefmark{3} and
+%Eldon Tyrell\IEEEauthorrefmark{4}}
+%\IEEEauthorblockA{\IEEEauthorrefmark{1}School of Electrical and Computer Engineering\\
+%Georgia Institute of Technology,
+%Atlanta, Georgia 30332--0250\\ Email: see http://www.michaelshell.org/contact.html}
+%\IEEEauthorblockA{\IEEEauthorrefmark{2}Twentieth Century Fox, Springfield, USA\\
+%Email: homer@thesimpsons.com}
+%\IEEEauthorblockA{\IEEEauthorrefmark{3}Starfleet Academy, San Francisco, California 96678-2391\\
+%Telephone: (800) 555--1212, Fax: (888) 555--1212}
+%\IEEEauthorblockA{\IEEEauthorrefmark{4}Tyrell Inc., 123 Replicant Street, Los Angeles, California 90210--4321}}
+
+
+
+
+% use for special paper notices
+%\IEEEspecialpapernotice{(Invited Paper)}
+
+
+
+
+% make the title area
+\maketitle
+
+% As a general rule, do not put math, special symbols or citations
+% in the abstract
+% \begin{abstract}
+% The abstract goes here.
+% \end{abstract}
+
+% no keywords
+
+
+
+
+% For peer review papers, you can put extra information on the cover
+% page as needed:
+% \ifCLASSOPTIONpeerreview
+% \begin{center} \bfseries EDICS Category: 3-BBND \end{center}
+% \fi
+%
+% For peerreview papers, this IEEEtran command inserts a page break and
+% creates the second title. It will be ignored for other modes.
+\IEEEpeerreviewmaketitle
+
+
+
+\section{Phase I: Classical Approach}
+
+In this part of the project, we explore the classical methods to create a panoroma by stiching the image sequences. Each subsection explains in detail about the methodology followed and subsequent output of the images
+
+\subsection{Corner Detection}
+Idea is to draw relationship between how images using a set of features. Corners are best way to do that since they are visible from many different views. We can detect as many corners are possible from the given image and compare the features across the images. This comparison would tell us how the images are geometrically related to one another. For corner detection, we used OpenCV's Harris corners detection functionality. Following parameters are for corner detection are found to be optimal; kernel size $7$, harris $K$ parameter $0.04$, harris sobel kernel size $11$. Figure \ref{fig:image_corners} show the corners detected across the images.
+
+\begin{figure}[h]
+  \centering
+  \captionsetup{justification=centering}
+  \includegraphics[width=0.5\textwidth]{phase1/imagecorners.png}
+  \caption{\label{fig:image_corners}image corners}
+\end{figure}
+\subsection{Adaptive Non Maximal Suppression}
+Now that we have detected corners in each image, we need to find out ``best'' corners. Best corners are those which stand out among the local peer corners. Moreover, we want these corners evenly spread across the image so that we can get better homographies. To this end, we use Adaptive Non Maximal Suppression (ANMS) which does 2 parts 
+\begin{enumerate}
+  \item take local maxima over corners
+  \item \label{itm:anms_corners}consider only those corners which have a larger distance from relatively stronger corners
+\end{enumerate}
+Point \ref{itm:anms_corners} is basically the main part of the ANMS which gives evenly spread out corners from a set of ``clusters''. Problem with harris corners or any other corner detector is that they detect a cluster of corners instead of just one corner. This makes sense since a corner is a set of pixels and based on resolution of the image many pixels can be accurately called corners. Even if we do local maxima of the image, the cluster might still persist. To circumvent this problem ANMS takes a point which is maximally distant to the other stronger corners and when we take sorted $N_{best}$ corners we will be able to get a point from cluster. Figure \ref{fig:anms_corners} shows how the ANMS has decreased the cluster of corners to good corners. 
+\begin{figure}[h]
+  \centering
+  \captionsetup{justification=centering}
+  \includegraphics[width=0.5\textwidth]{phase1/anms_corners.png}
+  \caption{\label{fig:anms_corners}ANMS output}
+\end{figure}
+
+\subsection{Feature Descriptor}
+We need to give each corner an ``identity'' in order to compare them across the images. This identity is called Feature Descriptor. Our appraoch to derive this unique identification is as mentioned in the problem statement 
+\begin{enumerate}
+  \item chosen corners only that can fit well within the dimensions of $(40,40)$
+  \item flattened this sample into a 1D array
+  \item took pixels at every $25$th index, idea is to take every 5th pixel rowwise or columnwise
+  \item finally reshaped into a $(8 \times 8)$ patch, standardized and blurred to make a smooth variation
+\end{enumerate}
+
+One of the takeaways from this process of feature descriptor is how important the standardization is. Initially when we were playing around with the parameters, we removed the standardization and tried the feature matching that is described in the next step. The unnormalized patch didnt match well with the feature descriptors from other images. The reason being the contrast, intensity differences. The standardization is making the patch invariant of these intensity differences and making the patch more ``comparable''. A sample patch of an image corner can be seen in figure \ref{fig:corner_descriptor_patch}
+
+% \begin{figure}[h]
+%   \centering
+%   \captionsetup{justification=centering}
+%   \includegraphics[width=0.5\textwidth]{phase1/corner_patch.png}
+%   \caption{\label{fig:corner_descriptor_patch}Corner Descriptor Patch}
+% \end{figure}
+
+\subsection{Feature Matching}
+The feature descriptors derived from the above process now needs to matched with other image feature descriptors. This matching is the important step since this is what tells us how much percentage of the images are overlapped with each other. The better and more accurate approach to reason about overlapping is ideally using photometric comparisons. But these direct methods are expensive in nature and hence we resort to using geometric features like above. In this case we compare geometric features like corners across the images. The algorithm for comparison is based on David Lowe's ratio test. From the above set of feature descriptors the naive and simple way would have been to minimize the 'distance' between feature descriptor vectors. The problem with this approach is that there cant be false positive that can minimize the distance and we might end up with bad set of matches. To prevent this the ratio test compares the first and second best feature descriptors distances. If the ratio is below certain threshold $\epsilon$, we add the first best feature pair to the feature match set. Basically, when we select a match for a feature we need to make sure that the corresponding feature is adding value making the pair unique. In case the second best feature match is also within comparable distance of the first one, i.e it is above certain threshhold, then first feature correspondence is not truly unique and thereby not adding any value. With this rationale, we basically discard the pair and move on. This is truly a simple and elegant way to test for false positives while matching features or any data for that matter. Figure \ref{fig:feature_matching}
+
+\begin{figure}[h]
+  \centering
+  \captionsetup{justification=centering}
+  \includegraphics[width=0.5\textwidth]{phase1/customset2_feature_matches_2_1.png}
+  \caption{\label{fig:ransac_feature_matching}Feature Matches in CustomSet2}
+\end{figure}
+
+
+\subsection{Random Sampling and Consensus(RANSAC)}
+Feature matches identified above are not truly correct and prone to outliers like any other data generated in the world. To identify which data is part of the set and which data is outlier, we need to create some sort of data model and fit the model and reason about them. Again, the naive way to do is see where the data points lie and manually prune those data points. Or programatically check standard deviation of the data scatter and select some quartiles of the standard deviation. Although these methods are not wrong and not bad, they need lot of tuning and doesnt generalize well across the data points. Instead, to achieve this, we perform RANSAC, Random Sample Consensus. This robust method gives a probabilistic reasoning on creating a dataset without outliers \cite{bib:ransac_video}. The idea is that we want to identify the minimum data which give us best fit to our model and generalize well for all the other data points. In our case, model is the Homography estimation given a pair of images. We follow the RANSAC algorithm and get a good feature matches as shown in figure \ref{fig:ransac_feature_matching}. Clearly, we can see that some of the false positive matching across the towers of the building is removed after performing RANSAC.
+
+\begin{figure}[h]
+  \centering
+  \captionsetup{justification=centering}
+  \includegraphics[width=0.5\textwidth]{phase1/customset2_ransac_feature_matches_2_1.png}
+  \caption{\label{fig:ransac_feature_matches}Feature Matches in CustomSet2 after RANSAC}
+\end{figure}
+
+\subsection{Stitching and Blending}
+Once we get the relative homography between a pair of images, we need to stitch them together. We found that programatically, stitching a little harder and we had inefficient implementation of it. Below steps outline our approach to stitching
+\begin{enumerate}
+    \item To simplify, let's say image 2 is being transformed with $H$ and stitched to image 1
+    \item we first take the bounding box coordinates of the image 2
+    \item identify the final bounding box coordinates of image 2 after transformation
+    \item if the bounding box has negative coordinate element, we take minimum negative element along each coordinate axis and translate the transformed image 2 by $T$
+    \item Now, since the projected image 2 is translated by $T$, we perform the same translation to image 1 to match the frames in which they are depicted
+    \item Once they are in the same frame, we find the intersected polygon of overlapping images. This operation is computationally expensive and hoping to find efficient ways to do that using OpenCV functionality
+    \item We perform alpha blending giving different weights to each pair of the image and merge the overlapped part
+\end{enumerate}
+
+The results of following the above steps for stitching can be seen in \ref{fig:stitch_pair}
+
+\begin{figure}[h]
+  \centering
+  \captionsetup{justification=centering}
+  \includegraphics[width=0.5\textwidth]{phase1/set1_clear_stitch_12.png}
+  \caption{\label{fig:stitch_pair}Set1 Stitching}
+\end{figure}
+\subsection{Recognizing Panorama}
+After perfoming the above steps to all the possible pairs, it is high time to recognize how the panorama has to be created. Given $N$ unordered images, there are $N!$ ways in which panorama can be created. Moreover, selecting the correct panorama with best overlap is another major task in this 
+ bruteforce approach. A little better way to do is to decrease the difficulty by making a ordered set of images and stitching them one by one at the cost of generalizability. Another better and more generalizable way is to create a DAG of image nodes showing the relationship of one image with another. We explore both the approaches and detail it below. 
+
+ \subsubsection{Ordered Stitch}
+ To get things started and make sure tht our code is intact, we explore this method of ordereing the images and stitching them in sequential manner. Idea is simple, 
+ \begin{enumerate}
+ \item Visually inspect the images and order the images in which they have to be stitched
+ \item Initialize the reference image as first image
+ \item Get the image correspondence between reference image and second image.
+ \item Stitch the reference image and second image based on the estimated homography
+ \item store the output of the stitch as reference image for subsequent updates
+ \item Store this image as a reference image for the third image and perform the above steps
+ \end{enumerate}
+
+ Figure \ref{fig:ordered_stitch} shows the final result of this process. Although this method is rudimentary, it performs relatively better to get started. We observed following problems with this approach 
+ \begin{enumerate}
+     \item Unable to find good feature correspondences in subsequent runs once the image is stitched. This is due to the loss in clarity of the image due to view point changes. 
+     \item Even after optimizing the memory issues perspective transform is giving zoomed versions of pictures as shown in figure \ref{fig:zooming_perspective} due to incorrect homographies. 
+     \item More technically, our code is not optimized well and memory crashes are occuring as the number of images to stitch is increasing
+ \end{enumerate}
+
+\begin{figure}[h]
+  \centering
+  \captionsetup{justification=centering}
+  \includegraphics[width=0.5\textwidth]{phase1/set1_clear_stitch123.png}
+  \caption{\label{fig:ordered_stitch}Ordered Stitch of Train set 1}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \captionsetup{justification=centering}
+  \includegraphics[width=0.5\textwidth]{phase1/set2_zoomed_image3.png}
+  \caption{\label{fig:zooming_perspective}Perspective transforms in Ordered Stitch }
+\end{figure}
+
+\subsubsection{Image relationship Graph Construction}
+In this approach, we create a Directed Acylic Graph of images, which denote their relationship to one another. Here relationship or edges are created based on their number of features. It's more elegant and well generalized across the data sets. Below steps outline the procedure for the same 
+\begin{enumerate}
+    \item Create all the possible image to image correspondences within the given panorama 
+    \item Store this information in a adjacency matrix where $i,j$ element denote the number of features correspondences they share if image $j$ where to transform to image $i$ perspective. i.e. $H_{i}^{j}$
+    \item Now, perform a minimum number features thresholding to remove the edges which has less overlap
+    \item Fix directions such that we have only one directed edge to neighbouring nodes. This is done by taking the maximum feature route
+    \item In case the number of features are same from both the directions then we preserve the edge whose pointed node has more connections and more features. Essentially indicating that this node or image has better overlap with many other nodes/images
+    \item From here, we will end up a graph with one root node or many island graphs which are well connected
+    \item we take the graph which has maximum number of nodes and use the corresponding nodes for panorama stitching
+    \item the reference node will be the root node of the graph
+    \item homographies to the root from any node is computed by multiplying edge homographies as shown in equation \ref{equation:recursive_homography} 
+\end{enumerate}
+If $H_{i}^{j}$ is the homography of transforming $i$th image onto $j$th image, and $H_{j}^{k}$ is homography of transforming $j$th image onto $k$th image, then $H_{i}^{k}$ is given by 
+
+\begin{equation}
+H_{i}^{k} \space = \space H_{j}^{k}H_{i}^{j}
+\end{equation}
+
+Generalizing it, for computing homography of $i$th image onto $l$th image connected by a list of nodes is given by 
+\begin{equation}
+\label{equation:recursive_homography}
+H_{i}^{l} \space = \space \prod_{k=i}^{l-1}H_{k}^{k+1}
+\end{equation}
+
+
+It's a fairly involved and programmatically interesting process. Figure \ref{fig:graph_construction} outlines these steps in a pictographical manner. Figure \ref{fig:graph_testset2}. The problem in the image is that algorithm didnt account for the original image translation that happens every time stitching is done to offset the negative portion after stitching. Hoping to improve this in the future and show that this approach is indeed more robust and elegant than any brute force methods. 
+
+Results of test,train and custom set are dropped in the Phase I Results \ref{results_phase_I}
+
+\begin{figure}[!h]
+  \centering
+  \captionsetup{justification=centering}
+  \includegraphics[width=0.5\textwidth]{phase1/graph_appraoch.png}
+  \caption{\label{fig:graph_construction}TestSet1 DAG of images relationship along with adjacency matrix of feature edges }
+\end{figure}
+
+
+\begin{figure}[!h]
+  \centering
+  \captionsetup{justification=centering}
+  \includegraphics[width=0.5\textwidth]{phase1/graphset_image312456789_clear_stitch9.png}
+  \caption{\label{fig:graph_testset2}TestSet2 output from graph based panorama stitching}
+\end{figure}
+
+
+\section{Phase 2: Deep Learning Approach}
+
+
+\subsection{Data generation}
+
+The MSCOCO dataset with 5000 images was used to create the synthetic data used in the unsupervised and unsupervised approaches. As described in the problem statement, an active region is defined for every image. We chose this to be the central region of the image excluding 150 pixels worth of length on all four sides. Then, a patch of size 128x128 was chosen in the active region. This formed a part of the 'Orig' set. For the same patch we chose perturbations for all its four corners in the range [-32, 32]. The perturbed corners together with the original corners were used to calculate the homography. The inverse homography was then used to warp the original image and subsequently a patch was cropped from the warped image at the same location as the original image corners. This formed a part of the 'Warped' set. The patch is then translated by a stride of 32 pixels and the same process is repeated. Once the horizontal stride exceeds the limits, the patch is translated vertically downwards. This way based on the original image size we gather multiple pairs of data from one image. We end up with around 29000 image pairs from the original 5000 in this way. Both gray scale and color patches were created to compare which one performed the best.
+
+\subsection{Supervised Approach}
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.4\textwidth]{phase1/HomographyNet.png}
+  \caption{Homography Net}
+  \label{fig:Homography Net}
+\end{figure}
+
+The supervised deep learning approach uses the data generated using section 2A. We first used the same network architecture as used in the original HomographyNet paper. It is architecturally similar to Oxford's VGG Net and uses 3x3 convolutional blocks with BatchNorm and ReLUs. (see Figure 1). We use 8 convolutional layers with a max pooling layer (2x2, stride 2) after every two convolutions. The 8 convolutional layers have the following number of filters per layer: 64, 64, 64, 64, 128, 128, 128, 128. The convolutional layers are followed by two fully connected layers. The first fully connected layer has 1024 units. Dropout with a probability of 0.5 is applied after the final convolutional layer and the first fully-connected layer.  The network takes as input a two-channel grayscale image sized 128x128x2. In other words, the two input images, which are related by a homography, are stacked channel-wise and fed into the network.
+
+For this network architecture and data, we saw an exponentially decreasing loss on the train set wheareas a constant one on the validation set. The learning rate was kept at 0.005
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.4\textwidth]{phase1/first_training_loss.png}
+  \caption{HomographyNet: Training loss}
+  \label{fig:HNet training loss}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.4\textwidth]{phase1/first_validation_loss.png}
+  \caption{HomographyNet: Validation loss}
+  \label{fig:HNet validation loss}
+\end{figure}
+
+We changed the input to RGB images, so this time around the input was a 128x128x6 tensor formed by the two color images stacked channel-wise. The results were pretty much the same on this one as well.
+
+We decided to increase the dropout between one of the later convolutional layers as a potential solution to the overfitting. We also tried changing the optimizer to AdamW which is believed to be better at generalizing than the Adam optimizer that we were previously using. Figure \ref{fig:network_changes} shows a comparison between these two alterations. The dropout change performance is seen in blue whereas the dropout along with the optimizer change is seen in pink. Pink is clearly even worse.  The learning rate was changed to 0.001 for both of these tests.
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.4\textwidth]{phase1/dropout_vs_adamw.png}
+  \caption{Network changes: Dropout, Dropout with AdamW}
+  \label{fig:network_changes}
+\end{figure}
+
+\subsection{Unsupervised Approach}
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.4\textwidth]{phase1/Unsupervised.png}
+  \caption{Unsupervised overview}
+  \label{fig: Unsupervised overview}
+\end{figure}
+
+
+The unsupervised deep learning approach also uses the same data generated using section 2A and the same architecture as HomographyNet for generating the 4 point parametrisation of the Homography matrix, H4pt. A tensor direct linear transform (TensorDLT) formulation gives the 3x3 Homography matrix from the H4pt output out of HomographyNet. This layer has to be differentiable so as to have the gradients propagated through the network. We used functions from the pytorch library to create this layer. After obtaining the 3x3 homography matrix using tensorDLT, the original image is warped with this homography using a Spatial Transformer Network(STN) layer to obtain the warped image from the model. The STN is another differentiable layer in the network which facilitates the photometric loss calculation of the warped image against the ground truth input data.
+
+Figures \ref{fig: unsupervised_training_loss} and \ref{fig: unsupervised_validation_loss} show the training and validation losses for the unsupervised model. The model is shown in figure \ref{model:supervised}
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.4\textwidth]{phase1/unsup_training_loss.png}
+  \caption{Unsupervised Network: Training loss}
+  \label{fig: unsupervised_training_loss}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.4\textwidth]{phase1/unsup_validation_loss.png}
+  \caption{Unsupervised Network: Validation loss}
+  \label{fig: unsupervised_validation_loss}
+\end{figure}
+
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.4\textwidth]{phase1/homography_supervised.pt.png}
+  \caption{Supervised and Unsupervised model}
+  \label{model:supervised}
+\end{figure}
+
+
+\section{Phase I Results} \label{results_phase_I}
+\subsubsection{Train set results}
+Figures \ref{fig:train_set_I}, \ref{fig:train_set_II} and \ref{fig:train_set_III} show the outputs of Ordered stitch algorithm 
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.4\textwidth]{phase1/set1_clear_stitch123.png}
+  \caption{Train Set I}
+  \label{fig:train_set_I}
+\end{figure}
+
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.4\textwidth]{phase1/set2_clear_stitch3.png}
+  \caption{Train Set II}
+  \label{fig:train_set_II}
+\end{figure}
+
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.4\textwidth]{phase1/set3_clear_stitch12.png}
+  \caption{Train Set III}
+  \label{fig:train_set_III}
+\end{figure}
+\subsubsection{Custom set results}
+Figure \ref{fig:custom_set_I}
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.4\textwidth]{phase1/customset1_image123_clear_stitch3.png}
+  \caption{Custom Set I}
+  \label{fig:custom_set_I}
+\end{figure}
+
+\subsection{Test Set results}
+Figures \ref{fig:test_set_I}, \ref{fig:test_set_II} and \ref{fig:test_set_III} show the outputs based on Ordered stitch algorithm 
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.4\textwidth]{phase1/testset1_image12_clear_stitch2.png}
+  \caption{Test Set I}
+  \label{fig:test_set_I}
+\end{figure}
+
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.4\textwidth]{phase1/testset2_image123_clear_stitch3.png}
+  \caption{Test Set II}
+  \label{fig:test_set_II}
+\end{figure}
+
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.4\textwidphase]{phase1/testset3_image123_stitch3.png}
+  \caption{Test Set III}
+  \label{fig:test_set_III}
+\end{figure}
+
+\section{Phase II Results}
+
+Figures \ref{fig: sample image for dl}, \ref{fig: warped image}, \ref{fig: model warped image} show the sample original image, the image warped using perturbations(ground truth) and the warped image using the model.
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.4\textwidth]{phase1/original.png}
+  \caption{Sample image}
+  \label{fig: sample image for dl}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.4\textwidth]{phase1/original_warp.png}
+  \caption{Image warped using perturbed corners}
+  \label{fig: warped image}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.4\textwidth]{phase1/model_warped.png}
+  \caption{Image warped using model}
+  \label{fig: model warped image}
+\end{figure}
+
+
+% An example of a floating figure using the graphicx package.res
+% Note that \label must occur AFTER (or within) \caption.
+% For figures, \caption should occur after the \includegraphics.
+% Note that IEEEtran v1.7 and later has special internal code that
+% is designed to preserve the operation of \label within \caption
+% even when the captionsoff option is in effect. However, because
+% of issues like this, it may be the safest practice to put all your
+% \label just after \caption rather than within \caption{}.
+%
+% Reminder: the "draftcls" or "draftclsnofoot", not "draft", class
+% option should be used if it is desired that the figures are to be
+% displayed while in draft mode.
+%
+%\begin{figure}[!t]
+%\centering
+%\includegraphics[width=2.5in]{myfigure}
+% where an .eps filename suffix will be assumed under latex, 
+% and a .pdf suffix will be assumed for pdflatex; or what has been declared
+% via \DeclareGraphicsExtensions.
+%\caption{Simulation results for the network.}
+%\label{fig_sim}
+%\end{figure}
+
+% Note that the IEEE typically puts floats only at the top, even when this
+% results in a large percentage of a column being occupied by floats.
+
+
+% An example of a double column floating figure using two subfigures.
+% (The subfig.sty package must be loaded for this to work.)
+% The subfigure \label commands are set within each subfloat command,
+% and the \label for the overall figure must come after \caption.
+% \hfil is used as a separator to get equal spacing.
+% Watch out that the combined width of all the subfigures on a 
+% line do not exceed the text width or a line break will occur.
+%
+%\begin{figure*}[!t]
+%\centering
+%\subfloat[Case I]{\includegraphics[width=2.5in]{box}%
+%\label{fig_first_case}}
+%\hfil
+%\subfloat[Case II]{\includegraphics[width=2.5in]{box}%
+%\label{fig_second_case}}
+%\caption{Simulation results for the network.}
+%\label{fig_sim}
+%\end{figure*}
+%
+% Note that often IEEE papers with subfigures do not employ subfigure
+% captions (using the optional argument to \subfloat[]), but instead will
+% reference/describe all of them (a), (b), etc., within the main caption.
+% Be aware that for subfig.sty to generate the (a), (b), etc., subfigure
+% labels, the optional argument to \subfloat must be present. If a
+% subcaption is not desired, just leave its contents blank,
+% e.g., \subfloat[].
+
+
+% An example of a floating table. Note that, for IEEE style tables, the
+% \caption command should come BEFORE the table and, given that table
+% captions serve much like titles, are usually capitalized except for words
+% such as a, an, and, as, at, but, by, for, in, nor, of, on, or, the, to
+% and up, which are usually not capitalized unless they are the first or
+% last word of the caption. Table text will default to \footnotesize as
+% the IEEE normally uses this smaller font for tables.
+% The \label must come after \caption as always.
+%
+%\begin{table}[!t]
+%% increase table row spacing, adjust to taste
+%\renewcommand{\arraystretch}{1.3}
+% if using array.sty, it might be a good idea to tweak the value of
+% \extrarowheight as needed to properly center the text within the cells
+%\caption{An Example of a Table}
+%\label{table_example}
+%\centering
+%% Some packages, such as MDW tools, offer better commands for making tables
+%% than the plain LaTeX2e tabular which is used here.
+%\begin{tabular}{|c||c|}
+%\hline
+%One & Two\\
+%\hline
+%Three & Four\\
+%\hline
+%\end{tabular}
+%\end{table}
+
+
+% Note that the IEEE does not put floats in the very first column
+% - or typically anywhere on the first page for that matter. Also,
+% in-text middle ("here") positioning is typically not used, but it
+% is allowed and encouraged for Computer Society conferences (but
+% not Computer Society journals). Most IEEE journals/conferences use
+% top floats exclusively. 
+% Note that, LaTeX2e, unlike IEEE journals/conferences, places
+% footnotes above bottom floats. This can be corrected via the
+% \fnbelowfloat command of the stfloats package.
+
+
+
+
+
+
+% trigger a \newpage just before the given reference
+% number - used to balance the columns on the last page
+% adjust value as needed - may need to be readjusted if
+% the document is modified later
+%\IEEEtriggeratref{8}
+% The "triggered" command can be changed if desired:
+%\IEEEtriggercmd{\enlargethispage{-5in}}
+
+% references section
+
+% can use a bibliography generated by BibTeX as a .bbl file
+% BibTeX documentation can be easily obtained at:
+% http://mirror.ctan.org/biblio/bibtex/contrib/doc/
+% The IEEEtran BibTeX style support page is at:
+% http://www.michaelshell.org/tex/ieeetran/bibtex/
+%\bibliographystyle{IEEEtran}
+% argument is your BibTeX string definitions and bibliography database(s)
+%\bibliography{IEEEabrv,../bib/paper}
+%
+% <OR> manually copy in the resultant .bbl file
+% set second argument of \begin to the number of references
+% (used to reserve space for the reference number labels box)
+\begin{thebibliography}{1}
+\bibitem{bib:ransac_video}
+https://www.youtube.com/watch?v=9D5rrtCC\_E0&ab\_channel=CyrillStachniss
+
+\end{thebibliography}
+
+
+
+
+% that's all folks
+\end{document}
+
+
