@@ -45,6 +45,16 @@ Output
 <img src="report/phase1/customset1_image123_clear_stitch3.png" width="700" height="500"/>
 </p>
 
+## Design Overview
+
+### Recognizing the panorama
+We did a brute force feature matching with all possible pairs and recognised the best possible way to stitch images, aka recognizing panorama, using graph based approach outlined below
+
+<p float="middle">
+<img src="report/phase1/graph_appraoch.png" />
+</p>
+
+
 ## Collaborators 
 Radha Saraf - rrsaraf@wpi.edu
 
