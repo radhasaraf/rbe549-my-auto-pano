@@ -36,8 +36,8 @@ Output
 Following are the images we took at WPI
 
 <p float="middle">
-  <img src="Phase1/Data/Train/CustomSet1/1.jpg" width="290" hspace="20" />
-  <img src="Phase1/Data/Train/CustomSet1/2.jpg" width="160" hspace="20" /> 
+  <img src="Phase1/Data/Train/CustomSet1/1.jpg" width="300" hspace="20" />
+  <img src="Phase1/Data/Train/CustomSet1/2.jpg" width="300" hspace="20" /> 
 </p>
 
 Output
