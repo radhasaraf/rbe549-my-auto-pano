@@ -1,20 +1,50 @@
-# rbe549-my-auto-pano
-Stitch two or more images to create a seamless panorama image using classical &amp; deep learning approaches
+# AutoPano - Panorama Stitcher
+- Stitches two or more images to create a seamless panorama image using classical &amp; deep learning approaches. 
+- This is part of the course [RBE549:Classical and deep learning approaches to computer vision](https://nitinjsanket.github.io/teaching/rbe549/fall2022.html)
+
+<!--
+<table>
+  <tr>
+    <td>First Screen Page</td>
+     <td>Holiday Mention</td>
+     <td>Present day in purple and selected day in pink</td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="Phase1/Data/Test/TestSet2/1.jpg"></td>
+    <td valign="top"><img src="Phase1/Data/Test/TestSet2/1.jpg"></td>
+    <td valign="top"><img src="Phase1/Data/Test/TestSet2/1.jpg"></td>
+  </tr>
+ </table>
+-->
 
 # Results 
-Initial Images
-<p float="left">
-  <img src="Phase1/Data/Test/TestSet2/1.jpg" width="100" />
-  <img src="Phase1/Data/Test/TestSet2/2.jpg" width="100" /> 
-  <img src="Phase1/Data/Test/TestSet2/3.jpg" width="100" />
+
+### Test Set
+Given Images
+<p float="middle">
+  <img src="Phase1/Data/Test/TestSet2/1.jpg" width="250" hspace="20" />
+  <img src="Phase1/Data/Test/TestSet2/2.jpg" width="250" hspace="20" /> 
+  <img src="Phase1/Data/Test/TestSet2/3.jpg" width="250" hspace="20" />
 </p>
 
-![Image 1](Phase1/Data/Test/TestSet2/1.jpg) + ![Image 2](Phase1/Data/Test/TestSet2/2.jpg) + ![Image 3](Phase1/Data/Test/TestSet2/3.jpg)
-
-![Stitch Output](report/phase1/testset2_image123_clear_stitch3.png)
+Output
+<p float="middle">
+<img src="report/phase1/testset2_image123_clear_stitch3.png" width="500" height="500"/>
+</p>
 
 ### Custom Set
-![Custom Set Output](report/phase1/customset1_image123_clear_stitch3.png) 
+Following are the images we took at WPI
+
+<p float="middle">
+  <img src="Phase1/Data/Train/CustomSet1/1.jpg" width="290" hspace="20" />
+  <img src="Phase1/Data/Train/CustomSet1/2.jpg" width="160" hspace="20" /> 
+</p>
+
+Output
+<p float="middle">
+<img src="report/phase1/customset1_image123_clear_stitch3.png" width="500" height="500"/>
+</p>
+
 ## Collaborators 
 Radha Saraf - rrsaraf@wpi.edu
 
