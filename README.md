@@ -42,7 +42,7 @@ Following are the images we took at WPI
 
 Output
 <p float="middle">
-<img src="report/phase1/customset1_image123_clear_stitch3.png" width="500" height="500"/>
+<img src="report/phase1/customset1_image123_clear_stitch3.png" width="700" height="500"/>
 </p>
 
 ## Collaborators 
